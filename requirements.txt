@@ -1,22 +1,14 @@
-# ─── Core ─────────────────────────────────────────────────────────────────────
-streamlit>=1.36.0          # Diperlukan untuk st.navigation & st.Page API
-
-# ─── Data & ML ────────────────────────────────────────────────────────────────
+streamlit>=1.32.0
+xgboost>=2.0.0
+scikit-learn>=1.4.0
+imbalanced-learn
 pandas>=2.0.0
 numpy>=1.26.0
-scikit-learn>=1.4.0
-joblib>=1.3.0
-
-# ─── Visualisasi ──────────────────────────────────────────────────────────────
+google-generativeai>=0.4
+python-dotenv>=1.0.0
 plotly>=5.18.0
-matplotlib>=3.8.0
-seaborn>=0.13.0
-
-# ─── LLM / Chatbot (aktifkan sesuai provider yang dipilih) ───────────────────
-# openai>=1.0.0             # Untuk OpenAI GPT
-google-generativeai>=0.4  # Untuk Google Gemini
-# langchain>=0.1.0          # Untuk LangChain + RAG
-# faiss-cpu>=1.7.4          # Untuk vector store RAG
-
-# ─── Utilities ────────────────────────────────────────────────────────────────
-python-dotenv>=1.0.0       # Untuk load .env secrets
+shap
+joblib
+tqdm
+matplotlib
+seaborn
