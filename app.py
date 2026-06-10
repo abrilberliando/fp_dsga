@@ -164,7 +164,7 @@ with st.sidebar:
     if llm_api_key:
         st.success("✓ API Key berhasil diisi", icon="✅")
         # Simpan ke session state
-        st.session_state.llm_api_key = llm_api_key
+        # st.session_state.llm_api_key = llm_api_key
     else:
         st.caption("⚠️ API Key belum dikonfigurasi")
 
