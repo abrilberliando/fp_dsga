@@ -62,11 +62,56 @@ class Predictor:
         
         importances = self.model.feature_importances_
         feature_importance_df = pd.DataFrame({
-            'Fitur': self.feature_names,
-            'Kepentingan': importances
-        }).sort_values(by='Kepentingan', ascending=False)
+            'Fitur Teknis': self.feature_names,
+            'Pengaruh (%)': importances * 100
+        })
         
-        return prob, feature_importance_df.head(5)
+        # Peta fitur teknis ke kelompok UI (Sesuai form di halaman prediksi yang hanya 5 input)
+        ui_group_map = {
+            # 1. Masa Simpan (Sisa Hari)
+            "days_until_expiry": "Sisa Hari Sebelum Kadaluarsa",
+            "shelf_urgency": "Sisa Hari Sebelum Kadaluarsa",
+            
+            # 2. Harga Modal & Jual
+            "profit_margin_pct": "Harga Modal & Jual (Margin Profit)",
+            "profit": "Harga Modal & Jual (Margin Profit)",
+            "revenue": "Harga Modal & Jual (Margin Profit)",
+            "price_ratio": "Harga Modal & Jual (Margin Profit)",
+            "cost_price": "Harga Modal & Jual (Margin Profit)",
+            "selling_price": "Harga Modal & Jual (Margin Profit)",
+            "base_price": "Harga Modal & Jual (Margin Profit)",
+            "discount_pct": "Harga Modal & Jual (Margin Profit)",
+            "markdown_applied": "Harga Modal & Jual (Margin Profit)",
+            
+            # 3. Kondisi Suhu Penyimpanan
+            "storage_temp": "Kondisi Suhu Penyimpanan",
+            "temp_risk_score": "Kondisi Suhu Penyimpanan",
+            "temp_abuse_rate": "Kondisi Suhu Penyimpanan",
+            "temp_abuse_events": "Kondisi Suhu Penyimpanan",
+            "temp_deviation": "Kondisi Suhu Penyimpanan",
+            "sensitivity_exposure": "Kondisi Suhu Penyimpanan",
+            
+            # 4. Jenis Produk
+            "category": "Jenis Produk",
+            "spoilage_risk": "Jenis Produk",
+            "spoilage_sensitivity": "Jenis Produk"
+        }
+        
+        feature_importance_df['Penyebab (Faktor Utama)'] = feature_importance_df['Fitur Teknis'].map(lambda x: ui_group_map.get(x, "Faktor Bawaan Lainnya"))
+        
+        # Kelompokkan dan jumlahkan persentase berdasarkan UI form
+        grouped_df = feature_importance_df.groupby('Penyebab (Faktor Utama)', as_index=False)['Pengaruh (%)'].sum()
+        
+        # Urutkan berdasarkan yang paling berpengaruh
+        grouped_df = grouped_df.sort_values(by='Pengaruh (%)', ascending=False)
+        
+        # Jangan tampilkan "Faktor Bawaan Lainnya" di tabel agar tidak membingungkan user
+        grouped_df = grouped_df[grouped_df['Penyebab (Faktor Utama)'] != "Faktor Bawaan Lainnya"]
+        
+        # Kembalikan top 5
+        top_5 = grouped_df.head(5)
+        
+        return prob, top_5
         
     def get_global_importances(self):
         importances = self.model.feature_importances_
