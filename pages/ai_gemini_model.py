@@ -114,7 +114,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🔍 Gemini Overview",
     "⚙️ API Configuration",
     "📝 Custom Prompt",
-    "🔄 AI Workflow & Simulation"
+    "🔄 AI Workflow"
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -438,183 +438,89 @@ with tab3:
         """)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 4: AI WORKFLOW & SIMULATION
+# TAB 4: AI WORKFLOW
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown("### 🧪 Live AI Playground")
-    st.caption("Gunakan area ini untuk mensimulasikan bagaimana Gemini mengolah data produk dan hasil prediksi XGBoost menjadi rekomendasi strategi retail.")
+    st.markdown("### 🏗️ System Architecture & Data Flow")
+    st.caption("Alur kerja sistem terintegrasi dari input pengguna, prediksi XGBoost, hingga analisis oleh Gemini.")
 
-    # Bagian 1: Input Simulasi (Dummy Data)
-    with st.container(border=True):
-        st.markdown("#### 📥 Step 1: Input Simulation Data")
-        col_in1, col_in2, col_in3 = st.columns(3)
-        
-        with col_in1:
-            sim_kategori = st.selectbox("Kategori Produk", ["Dairy", "Buah & Sayur", "Daging", "Frozen Food", "Bakery"])
-            sim_stok = st.number_input("Jumlah Stok (Unit)", min_value=0, value=150)
-            
-        with col_in2:
-            sim_sisa_hari = st.slider("Sisa Hari Kadaluarsa", 0, 30, 3)
-            sim_diskon = st.slider("Diskon Saat Ini (%)", 0, 90, 10)
-            
-        with col_in3:
-            sim_risk_prob = st.slider("XGBoost Risk Probability (%)", 0, 100, 85)
-            sim_risk_status = st.select_slider("XGBoost Risk Status", options=["LOW", "MEDIUM", "HIGH", "CRITICAL"], value="HIGH")
-
-    st.markdown("")
-
-    # Bagian 2: Tombol Eksekusi
-    col_play_spacer, col_play_btn = st.columns([3, 1])
-    with col_play_btn:
-        generate_test = st.button("🔮 Generate AI Analysis", type="primary", use_container_width=True)
-
-    # Bagian 3: Logika Pemanggilan API
-    if generate_test:
-        if not st.session_state.get("llm_api_key"):
-            st.error("❌ API Key belum diisi di Sidebar!")
-        else:
-            with st.spinner("Gemini sedang menganalisis data simulasi..."):
-                try:
-                    active_prompt = st.session_state.get("active_system_prompt", get_system_prompt())
-                    
-                    user_msg = f"""
-                    DATA PRODUK SIMULASI:
-                    - Kategori: {sim_kategori}
-                    - Stok: {sim_stok} unit
-                    - Sisa Hari: {sim_sisa_hari} hari
-                    - Diskon: {sim_diskon}%
-                    
-                    HASIL PREDIKSI XGBOOST:
-                    - Risk Probability: {sim_risk_prob}%
-                    - Status: {sim_risk_status}
-                    """
-                    
-                    genai.configure(api_key=st.session_state.llm_api_key)
-                    model = genai.GenerativeModel("gemini-2.5-flash")
-                    response = model.generate_content(f"{active_prompt}\n\n{user_msg}")
-                    
-                    st.markdown("---")
-                    st.markdown("### 💼 AI Strategic Recommendation")
-                    
-                    try:
-                        import json
-                        raw_text = response.text
-                        start_idx = raw_text.find('{')
-                        end_idx = raw_text.rfind('}') + 1
-                        
-                        if start_idx != -1 and end_idx > start_idx:
-                            json_str = raw_text[start_idx:end_idx]
-                            res_json = json.loads(json_str)
-                        else:
-                            raise ValueError("Format JSON tidak ditemukan di dalam teks")
-                        
-                        st.success(f"**Analisis Risiko:** {res_json.get('risk_analysis', 'N/A')}")
-                        
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            with st.container(border=True):
-                                st.markdown("##### ⚙️ Faktor Utama")
-                                for f in res_json.get('main_factors', []):
-                                    st.write(f"- {f}")
-                        with c2:
-                            with st.container(border=True):
-                                st.markdown("##### 📦 Rekomendasi Inventory")
-                                st.info(res_json.get('inventory_recommendation', 'N/A'))
-                        
-                        with st.container(border=True):
-                            st.markdown("##### ✅ Aksi Strategis")
-                            for a in res_json.get('recommended_actions', []):
-                                st.write(f"- {a}")
-                                
-                        st.warning(f"**Strategi Harga:** {res_json.get('suggested_discount_strategy', 'N/A')}")
-                        
-                    except:
-                        st.write(response.text)
-                        
-                except Exception as e:
-                    st.error(f"Gagal generate rekomendasi: {e}")
-
-    st.markdown("---")
+    st.markdown("#### 🔄 Data Flow Pipeline")
     
-    # Bagian 4: Arsitektur (Dikembalikan dari kode aslimu yang sangat bagus)
-    with st.expander("🏗️ View System Architecture & Data Flow", expanded=False):
-        st.markdown("#### 🔄 Data Flow Pipeline")
-        
-        with st.container(border=True):
-            st.markdown("""
-            <div style="text-align: center; padding: 20px;">
-                <div style="
-                    display: flex;
-                    justify-content: space-around;
-                    align-items: center;
-                    margin: 20px 0;
-                    font-size: 14px;
-                    font-weight: 600;
-                ">
-                    <div style="flex: 1; text-align: center;">
-                        <div style="font-size: 36px; margin-bottom: 8px;">📋</div>
-                        <div>User Input</div>
-                        <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
-                            Kategori, Stok,<br/>Kadaluarsa, Diskon
-                        </div>
+    with st.container(border=True):
+        st.markdown("""
+        <div style="text-align: center; padding: 20px;">
+            <div style="
+                display: flex;
+                justify-content: space-around;
+                align-items: center;
+                margin: 20px 0;
+                font-size: 14px;
+                font-weight: 600;
+            ">
+                <div style="flex: 1; text-align: center;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">📋</div>
+                    <div>User Input</div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                        Kategori, Stok,<br/>Kadaluarsa, Diskon
                     </div>
-                    <div style="font-size: 24px; opacity: 0.5;">→</div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="font-size: 36px; margin-bottom: 8px;">🤖</div>
-                        <div>XGBoost Model</div>
-                        <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
-                            ML Prediction<br/>Risk Score
-                        </div>
+                </div>
+                <div style="font-size: 24px; opacity: 0.5;">→</div>
+                <div style="flex: 1; text-align: center;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">🤖</div>
+                    <div>XGBoost Model</div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                        ML Prediction<br/>Risk Score
                     </div>
-                    <div style="font-size: 24px; opacity: 0.5;">→</div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
-                        <div>Risk Analysis</div>
-                        <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
-                            Probability &<br/>Risk Status
-                        </div>
+                </div>
+                <div style="font-size: 24px; opacity: 0.5;">→</div>
+                <div style="flex: 1; text-align: center;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
+                    <div>Risk Analysis</div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                        Probability &<br/>Risk Status
                     </div>
-                    <div style="font-size: 24px; opacity: 0.5;">→</div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="font-size: 36px; margin-bottom: 8px;">✨</div>
-                        <div>Gemini LLM</div>
-                        <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
-                            Natural Language<br/>Analysis
-                        </div>
+                </div>
+                <div style="font-size: 24px; opacity: 0.5;">→</div>
+                <div style="flex: 1; text-align: center;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">✨</div>
+                    <div>Gemini LLM</div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                        Natural Language<br/>Analysis
                     </div>
-                    <div style="font-size: 24px; opacity: 0.5;">→</div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="font-size: 36px; margin-bottom: 8px;">💼</div>
-                        <div>Recommendation</div>
-                        <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
-                            Actionable<br/>Business Advice
-                        </div>
+                </div>
+                <div style="font-size: 24px; opacity: 0.5;">→</div>
+                <div style="flex: 1; text-align: center;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">💼</div>
+                    <div>Recommendation</div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                        Actionable<br/>Business Advice
                     </div>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        st.markdown("#### 🏗️ System Architecture Layers")
-        col_arch1, col_arch2 = st.columns(2)
-        
-        with col_arch1:
-            with st.container(border=True):
-                st.markdown("##### 📊 Machine Learning Layer")
-                st.markdown("""
-                **Model**: XGBoost Regressor  
-                **Purpose**: Predict food waste risk  
-                **Inputs**: Product features, Storage conditions, Inventory metrics, Market factors  
-                **Outputs**: Risk Probability (0-100%), Risk Status, Confidence Score
-                """)
-        
-        with col_arch2:
-            with st.container(border=True):
-                st.markdown("##### 🤖 LLM Layer (Gemini)")
-                st.markdown("""
-                **Model**: Gemini 2.5 Flash  
-                **Purpose**: Generate business recommendations  
-                **Inputs**: ML predictions, Product context, Business constraints  
-                **Outputs**: Risk narrative, Actionable recommendations, Discount strategies
-                """)
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    st.markdown("#### 🏗️ System Architecture Layers")
+    col_arch1, col_arch2 = st.columns(2)
+    
+    with col_arch1:
+        with st.container(border=True):
+            st.markdown("##### 📊 Machine Learning Layer")
+            st.markdown("""
+            **Model**: XGBoost Regressor  
+            **Purpose**: Predict food waste risk  
+            **Inputs**: Product features, Storage conditions, Inventory metrics, Market factors  
+            **Outputs**: Risk Probability (0-100%), Risk Status, Confidence Score
+            """)
+    
+    with col_arch2:
+        with st.container(border=True):
+            st.markdown("##### 🤖 LLM Layer (Gemini)")
+            st.markdown("""
+            **Model**: Gemini 2.5 Flash  
+            **Purpose**: Generate business recommendations  
+            **Inputs**: ML predictions, Product context, Business constraints  
+            **Outputs**: Risk narrative, Actionable recommendations, Discount strategies
+            """)
