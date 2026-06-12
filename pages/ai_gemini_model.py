@@ -65,27 +65,106 @@ def test_gemini_connection():
 
 
 def get_system_prompt():
-    """Return system prompt untuk Gemini."""
-    return """Anda adalah Senior Retail Operations AI Advisor yang ahli dalam:
-- Food Waste Prediction & Management
-- Inventory Optimization
-- Pricing Strategy
-- Demand Forecasting
+    """Return system prompt dokumentasi untuk Gemini."""
+    return """Anda adalah Senior Retail Operations Specialist yang ahli dalam food waste management dan inventory optimization.
 
-Tugasmu: Berdasarkan data produk dan hasil prediksi model XGBoost, berikan rekomendasi bisnis yang:
-1. Actionable (dapat langsung dijalankan manager)
-2. Data-driven (berbasis probabilitas risk dari model)
-3. Specific (dengan angka, persentase, atau timeline)
-4. Profitable (mempertimbangkan margin dan cost)
+KONTEKS HASIL PREDIKSI MODEL MACHINE LEARNING:
+===============================================
+Saya telah menjalankan model machine learning (XGBoost) untuk memprediksi risiko pembusukan produk retail.
 
-Format response HARUS dalam JSON dengan struktur:
-{
-    "risk_analysis": "penjelasan mendalam tentang risk yang diidentifikasi",
-    "main_factors": ["faktor 1", "faktor 2", "faktor 3"],
-    "recommended_actions": ["aksi 1", "aksi 2", "aksi 3"],
-    "suggested_discount_strategy": "strategi diskon dengan alasan bisnis",
-    "inventory_recommendation": "rekomendasi tindakan inventory"
-}"""
+HASIL PREDIKSI:
+- Probabilitas Risiko Pembusukan: {prob*100:.2f}%
+- Kategori Risiko: {risk_level}
+- Interpretasi: {risk_description}
+
+DATA PRODUK YANG DIANALISIS:
+============================
+Informasi Dasar:
+- Jenis Produk: {user_category_display} ({category})
+- Wilayah Toko: {region}
+- Kualitas Produk: {user_quality_display}
+- Sensitivitas Produk terhadap Pembusukan: {spoilage_sensitivity:.0%}
+
+Kondisi Penyimpanan Saat Ini:
+- Status Suhu: {user_temp_status} (Aktual: {storage_temp:.1f}°C)
+- Stabilitas Suhu: {user_temp_stability} (Deviasi: ±{temp_deviation:.1f}°C)
+- Frekuensi Gangguan Pendingin: {user_temp_abuse_freq} (Total: {temp_abuse_events} kali)
+- Kondisi Kemasan: {user_packaging_status} (Score: {packaging_score}/10)
+- Tingkat Kehati-hatian Penanganan: {user_handling_status} (Score: {handling_score}/10)
+
+Masa Simpan & Inventory:
+- Daya Tahan Total Produk: {shelf_life_days} hari
+- Sisa Hari Sebelum Kadaluarsa: {days_until_expiry} hari
+- Stok Awal: {initial_quantity} unit
+- Stok Terjual: {units_sold} unit
+- Sisa Stok Belum Terjual: {remaining_stock} unit
+
+Analisis Finansial:
+- Harga Modal per Unit: Rp {cost_price:,.0f}
+- Harga Jual Normal: Rp {base_price:,.0f}
+- Harga Jual Saat Ini: Rp {selling_price:,.0f}
+- Diskon Saat Ini: {discount_pct:.1f}%
+- Total Revenue (dari stok terjual): Rp {revenue:,.0f}
+- Profit Saat Ini: Rp {profit:,.0f}
+- Profit Margin: {profit_margin_pct:.1f}%
+- Nilai Stok Sisa (di harga modal): Rp {stock_value_at_cost:,.0f}
+- Potensi Kerugian Jika Semua Rusak: Rp {potential_loss:,.0f}
+
+TUGAS ANDA:
+===========
+Berdasarkan data di atas dan hasil prediksi model, lakukan analisis mendalam dan berikan rekomendasi operasional.
+
+OUTPUT HARUS DALAM FORMAT BERIKUT (Gunakan heading dan formatting yang jelas):
+
+1. **RINGKASAN KONDISI PRODUK**
+   - Berikan deskripsi terperinci kondisi produk saat ini.
+   - Sorot setidaknya 2-3 risiko utama dan kondisi kritis.
+
+2. **ANALISIS RISIKO**
+   - Jelaskan mengapa probabilitas risiko mencapai {prob*100:.2f}%.
+   - Identifikasi faktor utama yang mempengaruhi risiko.
+   - Bandingkan dengan standar industri atau praktik terbaik jika relevan.
+
+3. **FAKTOR YANG BERPENGARUH**
+   - Tampilkan 4-6 faktor kritis yang memengaruhi risiko.
+   - Jelaskan setiap faktor dengan dampak numerik atau level prioritas.
+
+4. **REKOMENDASI TINDAKAN**
+   - Berikan minimal 3 rekomendasi prioritas segera.
+   - Sertakan 2-3 rekomendasi jangka menengah (2-7 hari).
+   - Tambahkan 2-3 langkah preventif jangka panjang.
+   - Jelaskan alasan dan hasil yang diharapkan untuk setiap rekomendasi.
+
+5. **STRATEGI PENJUALAN**
+   - Usulkan strategi diskon optimal dengan angka/rentang diskon.
+   - Tentukan waktu pelaksanaan dan target segmen pelanggan.
+   - Sarankan metode promosi atau bundling spesifik.
+   - Sertakan proyeksi ROI atau dampak finansial singkat.
+
+6. **SARAN PENGELOLAAN INVENTARIS**
+   - Jelaskan cara terbaik menata dan menampilkan produk di rak.
+   - Sebutkan monitoring kritis yang harus dilaksanakan.
+   - Rekomendasikan koordinasi antar tim (warehouse, marketing, penjualan).
+   - Berikan mekanisme early warning untuk mencegah pembusukan.
+
+7. **KESIMPULAN**
+   - Tuliskan ringkasan eksekutif 3-5 baris.
+   - Tegaskan 3 prioritas utama yang harus dilakukan hari ini.
+
+KETENTUAN PENULISAN:
+- Gunakan Bahasa Indonesia yang profesional, jelas, dan komunikatif.
+- Tulis minimal 700 kata.
+- Jangan berhenti sebelum semua 7 bagian selesai.
+- Sajikan setiap poin dalam bullet atau subheading yang terstruktur.
+- Setiap rekomendasi harus memiliki dasar numerik atau alasan logis.
+- Hindari jawaban sangat singkat; berikan konteks, data, dan justifikasi.
+- Jika output tampak terputus, lanjutkan sampai semua bagian selesai.
+- Jika perlu, gunakan contoh tindakan operasional yang realistis.
+- Gunakan istilah yang mudah dipahami manajemen retail.
+
+BERIKAN jawaban yang komprehensif, spesifik, dan actionable.
+
+Mulai analisis sekarang:"""
 
 
 def copy_to_clipboard(text: str):
@@ -335,108 +414,49 @@ with tab2:
         """)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 3: CUSTOM PROMPT (Interactive Editor)
+# TAB 3: CUSTOM PROMPT (Documentation Mode)
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
-    st.markdown("### System Prompt Configuration")
-    st.caption("Prompt ini adalah 'otak' yang mengatur bagaimana Gemini berperilaku. Kamu bisa melihat atau masuk ke Mode Editor untuk mengubah persona AI.")
+    st.markdown("### 📝 System Prompt Documentation")
+    st.caption("Prompt ini adalah instruksi inti yang mengatur bagaimana Gemini mengevaluasi prediksi dari model XGBoost. Halaman ini murni sebagai dokumentasi arsitektur AI (Read-Only).")
     
     st.markdown("")
     
-    # 1. Inisialisasi Memori (Hanya berjalan sekali)
-    if "prompt_edit_mode" not in st.session_state:
-        st.session_state.prompt_edit_mode = False
+    col_header, col_tip = st.columns([1, 1])
+    with col_header:
+        st.markdown("#### 💾 Core Instruction Template")
+    with col_tip:
+        st.markdown("""
+        <div style='text-align: right; margin-top: 5px; opacity: 0.8;'>
+            <small>💡 <b>Tip:</b> Arahkan kursor ke pojok kanan atas kotak kode untuk menyalin.</small>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    # Menampilkan prompt statis dari fungsi
+    st.code(get_system_prompt(), language="text")
     
-    if "active_system_prompt" not in st.session_state:
-        st.session_state.active_system_prompt = get_system_prompt()
-
-    # 2. Logika Mode Tampilan
-    if not st.session_state.prompt_edit_mode:
-        # ==========================================
-        # VIEW MODE (Mode Baca)
-        # ==========================================
-        col_header, col_tip = st.columns([1, 1])
-        with col_header:
-            st.markdown("#### 💾 Current System Prompt")
-        with col_tip:
-            st.markdown("""
-            <div style='text-align: right; margin-top: 5px; opacity: 0.8;'>
-                <small>💡 <b>Tip:</b> Arahkan kursor ke pojok kanan atas kotak kode untuk menyalin.</small>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        # Menampilkan prompt yang sedang aktif
-        st.code(st.session_state.active_system_prompt, language="text")
-        
-        st.markdown("")
-        st.markdown("#### 📋 Actions")
-        
-        col_action1, col_action2 = st.columns(2)
-        with col_action1:
-            # Tombol untuk masuk ke mode edit
-            if st.button("✏️ Masuk Mode Editor", type="primary", use_container_width=True):
-                st.session_state.prompt_edit_mode = True
-                st.rerun() # Refresh layar langsung
-                
-        with col_action2:
-            st.download_button(
-                label="📥 Download Prompt as .txt",
-                data=st.session_state.active_system_prompt,
-                file_name="gemini_system_prompt.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-            
-    else:
-        # ==========================================
-        # EDIT MODE (Mode Edit)
-        # ==========================================
-        st.markdown("#### 📝 Editor Mode")
-        st.info("⚠️ **Perhatian:** Jangan menghapus bagian instruksi format JSON di bagian bawah prompt agar aplikasi tidak error.")
-        
-        # Kotak teks yang bisa diedit
-        edited_text = st.text_area(
-            "Edit System Prompt:", 
-            value=st.session_state.active_system_prompt, 
-            height=400,
-            label_visibility="collapsed"
-        )
-        
-        st.markdown("")
-        
-        # Deretan Tombol Kontrol Editor idemu
-        col_edit1, col_edit2, col_edit3 = st.columns(3)
-        
-        with col_edit1:
-            if st.button("💾 Simpan Perubahan", type="primary", use_container_width=True):
-                st.session_state.active_system_prompt = edited_text
-                st.session_state.prompt_edit_mode = False
-                st.rerun()
-                
-        with col_edit2:
-            if st.button("🔄 Reset ke Awal", use_container_width=True):
-                # Kembalikan ke fungsi get_system_prompt() bawaan
-                st.session_state.active_system_prompt = get_system_prompt()
-                st.session_state.prompt_edit_mode = False
-                st.rerun()
-                
-        with col_edit3:
-            if st.button("❌ Keluar (Tanpa Simpan)", use_container_width=True):
-                st.session_state.prompt_edit_mode = False
-                st.rerun()
+    st.markdown("")
+    
+    # Tombol Download tetap dipertahankan untuk evaluator
+    st.download_button(
+        label="📥 Download Full Prompt Template (.txt)",
+        data=get_system_prompt(),
+        file_name="gemini_system_prompt_documentation.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
 
     st.markdown("---")
     
-    # Prompt Breakdown
+    # Prompt Breakdown (Tidak diubah, tetap dipertahankan)
     with st.expander("🔍 Membedah Struktur Prompt", expanded=False):
         st.markdown("""
         ### Prompt Components:
         **1. Role Definition:** Defines AI as "Senior Retail Operations AI Advisor"
         **2. Task Description:** Clarity on input (product data + XGBoost predictions)
         **3. Quality Criteria:** Actionable, Data-driven, Specific, Profitable
-        **4. Output Format Specification:** Wajib menggunakan format JSON terstruktur.
+        **4. Output Format Specification:** Struktur laporan 7 poin yang komprehensif.
         """)
-
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4: AI WORKFLOW
 # ══════════════════════════════════════════════════════════════════════════════
