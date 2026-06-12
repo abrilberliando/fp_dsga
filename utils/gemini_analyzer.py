@@ -75,156 +75,78 @@ def build_analysis_prompt(input_data: dict, prob: float, user_inputs: dict) -> s
     Returns:
         Prompt string untuk dikirim ke Gemini
     """
-    
-    # Ekstrak data penting dengan safe defaults
-    category = input_data.get("category", "Unknown")
-    region = input_data.get("region", "Unknown")
-    quality_grade = input_data.get("quality_grade", "B")
-    storage_temp = input_data.get("storage_temp", 0)
-    temp_deviation = input_data.get("temp_deviation", 0)
-    initial_quantity = input_data.get("initial_quantity", 0)
-    units_sold = input_data.get("units_sold", 0)
+
+    # Ekstrak hanya field yang digunakan di prompt
     days_until_expiry = input_data.get("days_until_expiry", 0)
-    shelf_life_days = input_data.get("shelf_life_days", 0)
     cost_price = input_data.get("cost_price", 0)
     selling_price = input_data.get("selling_price", 0)
-    base_price = input_data.get("base_price", 0)
-    handling_score = input_data.get("handling_score", 5)
-    packaging_score = input_data.get("packaging_score", 5)
-    temp_abuse_events = input_data.get("temp_abuse_events", 0)
-    spoilage_sensitivity = input_data.get("spoilage_sensitivity", 0.5)
-    discount_pct = input_data.get("discount_pct", 0)
-    profit = input_data.get("profit", 0)
-    revenue = input_data.get("revenue", 0)
-    
-    # Hitung sisa stok dan data bisnis
-    remaining_stock = initial_quantity - units_sold
-    stock_value_at_cost = remaining_stock * cost_price
-    potential_loss = stock_value_at_cost  # Jika seluruh stok rusak
-    profit_margin_pct = (profit / revenue * 100) if revenue > 0 else 0
-    
-    # Kategori human-friendly dari user input
-    user_category_display = user_inputs.get("category_display", category)
-    user_quality_display = user_inputs.get("quality_display", quality_grade)
-    user_temp_status = user_inputs.get("storage_temp_status", "Unknown")
-    user_temp_stability = user_inputs.get("temp_deviation_status", "Unknown")
-    user_temp_abuse_freq = user_inputs.get("temp_abuse_events_status", "Unknown")
-    user_packaging_status = user_inputs.get("packaging_status", "Unknown")
-    user_handling_status = user_inputs.get("handling_status", "Unknown")
-    
+
+    # Human-friendly labels dari form user
+    product_type = user_inputs.get("category_display", input_data.get("category", "Unknown"))
+    storage_condition = user_inputs.get("storage_temp_status", "Unknown")
+
     # Risk level interpretation
-    if prob < 0.15:
+    if prob < 0.25:
         risk_level = "RENDAH"
         risk_description = "Produk dalam kondisi aman dengan kemungkinan pembusukan minimal"
-    elif prob < 0.40:
+    elif prob < 0.50:
         risk_level = "SEDANG"
         risk_description = "Produk memiliki beberapa faktor risiko yang perlu dimonitor"
-    else:
+    elif prob < 0.75:
         risk_level = "TINGGI"
         risk_description = "Produk berisiko tinggi dan memerlukan tindakan segera"
-    
-    # Build prompt dinamis
-    prompt = f"""Anda adalah Senior Retail Operations Specialist yang ahli dalam food waste management dan inventory optimization.
+    else:
+        risk_level = "KRITIS"
+        risk_description = "Produk dalam kondisi darurat, tindakan harus dilakukan hari ini"
 
-KONTEKS HASIL PREDIKSI MODEL MACHINE LEARNING:
-===============================================
-Saya telah menjalankan model machine learning (XGBoost) untuk memprediksi risiko pembusukan produk retail.
+    prompt = f"""Anda adalah konsultan retail yang membantu manager toko mengurangi food waste berdasarkan hasil prediksi machine learning.
 
-HASIL PREDIKSI:
-- Probabilitas Risiko Pembusukan: {prob*100:.2f}%
-- Kategori Risiko: {risk_level}
-- Interpretasi: {risk_description}
+HASIL PREDIKSI
 
-DATA PRODUK YANG DIANALISIS:
-============================
-Informasi Dasar:
-- Jenis Produk: {user_category_display} ({category})
-- Wilayah Toko: {region}
-- Kualitas Produk: {user_quality_display}
-- Sensitivitas Produk terhadap Pembusukan: {spoilage_sensitivity:.0%}
+* Risiko: {risk_level}
+* Probabilitas: {prob:.1%}
+* Keterangan: {risk_description}
 
-Kondisi Penyimpanan Saat Ini:
-- Status Suhu: {user_temp_status} (Aktual: {storage_temp:.1f}°C)
-- Stabilitas Suhu: {user_temp_stability} (Deviasi: ±{temp_deviation:.1f}°C)
-- Frekuensi Gangguan Pendingin: {user_temp_abuse_freq} (Total: {temp_abuse_events} kali)
-- Kondisi Kemasan: {user_packaging_status} (Score: {packaging_score}/10)
-- Tingkat Kehati-hatian Penanganan: {user_handling_status} (Score: {handling_score}/10)
+DATA PRODUK
 
-Masa Simpan & Inventory:
-- Daya Tahan Total Produk: {shelf_life_days} hari
-- Sisa Hari Sebelum Kadaluarsa: {days_until_expiry} hari
-- Stok Awal: {initial_quantity} unit
-- Stok Terjual: {units_sold} unit
-- Sisa Stok Belum Terjual: {remaining_stock} unit
+* Jenis Produk: {product_type}
+* Kondisi Penyimpanan: {storage_condition}
+* Sisa Hari Sebelum Kadaluarsa: {days_until_expiry} hari
+* Harga Modal: Rp {cost_price:,.0f}
+* Harga Jual: Rp {selling_price:,.0f}
 
-Analisis Finansial:
-- Harga Modal per Unit: Rp {cost_price:,.0f}
-- Harga Jual Normal: Rp {base_price:,.0f}
-- Harga Jual Saat Ini: Rp {selling_price:,.0f}
-- Diskon Saat Ini: {discount_pct:.1f}%
-- Total Revenue (dari stok terjual): Rp {revenue:,.0f}
-- Profit Saat Ini: Rp {profit:,.0f}
-- Profit Margin: {profit_margin_pct:.1f}%
-- Nilai Stok Sisa (di harga modal): Rp {stock_value_at_cost:,.0f}
-- Potensi Kerugian Jika Semua Rusak: Rp {potential_loss:,.0f}
+Tugas:
+Buat analisis singkat dan praktis berdasarkan hasil prediksi dan data produk.
+Gunakan format berikut:
 
-TUGAS ANDA:
-===========
-Berdasarkan data di atas dan hasil prediksi model, lakukan analisis mendalam dan berikan rekomendasi operasional.
+## Ringkasan
+Jelaskan kondisi produk saat ini dalam 2-3 kalimat.
 
-OUTPUT HARUS DALAM FORMAT BERIKUT (Gunakan heading dan formatting yang jelas):
+## Faktor Utama
+Sebutkan maksimal 3 faktor yang paling memengaruhi tingkat risiko.
 
-1. **RINGKASAN KONDISI PRODUK**
-   - Berikan deskripsi terperinci kondisi produk saat ini.
-   - Sorot setidaknya 2-3 risiko utama dan kondisi kritis.
+## Rekomendasi
+Berikan maksimal 3 tindakan prioritas yang dapat dilakukan segera.
 
-2. **ANALISIS RISIKO**
-   - Jelaskan mengapa probabilitas risiko mencapai {prob*100:.2f}%.
-   - Identifikasi faktor utama yang mempengaruhi risiko.
-   - Bandingkan dengan standar industri atau praktik terbaik jika relevan.
+## Dampak Bisnis
+Jelaskan secara singkat dampak yang mungkin terjadi apabila tidak ada tindakan.
 
-3. **FAKTOR YANG BERPENGARUH**
-   - Tampilkan 4-6 faktor kritis yang memengaruhi risiko.
-   - Jelaskan setiap faktor dengan dampak numerik atau level prioritas.
+## Kesimpulan
+Berikan ringkasan dalam 1-2 kalimat.
 
-4. **REKOMENDASI TINDAKAN**
-   - Berikan minimal 3 rekomendasi prioritas segera.
-   - Sertakan 2-3 rekomendasi jangka menengah (2-7 hari).
-   - Tambahkan 2-3 langkah preventif jangka panjang.
-   - Jelaskan alasan dan hasil yang diharapkan untuk setiap rekomendasi.
+Aturan:
 
-5. **STRATEGI PENJUALAN**
-   - Usulkan strategi diskon optimal dengan angka/rentang diskon.
-   - Tentukan waktu pelaksanaan dan target segmen pelanggan.
-   - Sarankan metode promosi atau bundling spesifik.
-   - Sertakan proyeksi ROI atau dampak finansial singkat.
-
-6. **SARAN PENGELOLAAN INVENTARIS**
-   - Jelaskan cara terbaik menata dan menampilkan produk di rak.
-   - Sebutkan monitoring kritis yang harus dilaksanakan.
-   - Rekomendasikan koordinasi antar tim (warehouse, marketing, penjualan).
-   - Berikan mekanisme early warning untuk mencegah pembusukan.
-
-7. **KESIMPULAN**
-   - Tuliskan ringkasan eksekutif 3-5 baris.
-   - Tegaskan 3 prioritas utama yang harus dilakukan hari ini.
-
-KETENTUAN PENULISAN:
-- Gunakan Bahasa Indonesia yang profesional, jelas, dan komunikatif.
-- Tulis minimal 700 kata.
-- Jangan berhenti sebelum semua 7 bagian selesai.
-- Sajikan setiap poin dalam bullet atau subheading yang terstruktur.
-- Setiap rekomendasi harus memiliki dasar numerik atau alasan logis.
-- Hindari jawaban sangat singkat; berikan konteks, data, dan justifikasi.
-- Jika output tampak terputus, lanjutkan sampai semua bagian selesai.
-- Jika perlu, gunakan contoh tindakan operasional yang realistis.
-- Gunakan istilah yang mudah dipahami manajemen retail.
-
-BERIKAN jawaban yang komprehensif, spesifik, dan actionable.
-
-Mulai analisis sekarang:
+* Gunakan Bahasa Indonesia yang profesional.
+* Fokus pada keputusan operasional retail.
+* Hindari penjelasan teknis machine learning.
+* Hindari mengulang seluruh data input.
+* Jangan membuat asumsi yang tidak didukung data.
+* Berikan rekomendasi yang realistis dan dapat diterapkan.
+* Maksimal 250 kata.
+* Gunakan bullet point jika diperlukan.
+* Prioritaskan informasi yang paling penting bagi manager toko.
 """
-    
+
     return prompt
 
 

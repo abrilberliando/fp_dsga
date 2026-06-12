@@ -66,105 +66,47 @@ def test_gemini_connection():
 
 def get_system_prompt():
     """Return system prompt dokumentasi untuk Gemini."""
-    return """Anda adalah Senior Retail Operations Specialist yang ahli dalam food waste management dan inventory optimization.
+    return """Anda adalah konsultan retail yang membantu mengurangi food waste berdasarkan hasil prediksi machine learning.
 
-KONTEKS HASIL PREDIKSI MODEL MACHINE LEARNING:
-===============================================
-Saya telah menjalankan model machine learning (XGBoost) untuk memprediksi risiko pembusukan produk retail.
+Analisis data berikut:
 
-HASIL PREDIKSI:
-- Probabilitas Risiko Pembusukan: {prob*100:.2f}%
-- Kategori Risiko: {risk_level}
-- Interpretasi: {risk_description}
+HASIL PREDIKSI
 
-DATA PRODUK YANG DIANALISIS:
-============================
-Informasi Dasar:
-- Jenis Produk: {user_category_display} ({category})
-- Wilayah Toko: {region}
-- Kualitas Produk: {user_quality_display}
-- Sensitivitas Produk terhadap Pembusukan: {spoilage_sensitivity:.0%}
+* Probabilitas Risiko: {probability}
+* Kategori Risiko: {risk_level}
 
-Kondisi Penyimpanan Saat Ini:
-- Status Suhu: {user_temp_status} (Aktual: {storage_temp:.1f}°C)
-- Stabilitas Suhu: {user_temp_stability} (Deviasi: ±{temp_deviation:.1f}°C)
-- Frekuensi Gangguan Pendingin: {user_temp_abuse_freq} (Total: {temp_abuse_events} kali)
-- Kondisi Kemasan: {user_packaging_status} (Score: {packaging_score}/10)
-- Tingkat Kehati-hatian Penanganan: {user_handling_status} (Score: {handling_score}/10)
+DATA PRODUK
+{product_context}
 
-Masa Simpan & Inventory:
-- Daya Tahan Total Produk: {shelf_life_days} hari
-- Sisa Hari Sebelum Kadaluarsa: {days_until_expiry} hari
-- Stok Awal: {initial_quantity} unit
-- Stok Terjual: {units_sold} unit
-- Sisa Stok Belum Terjual: {remaining_stock} unit
+Tugas:
 
-Analisis Finansial:
-- Harga Modal per Unit: Rp {cost_price:,.0f}
-- Harga Jual Normal: Rp {base_price:,.0f}
-- Harga Jual Saat Ini: Rp {selling_price:,.0f}
-- Diskon Saat Ini: {discount_pct:.1f}%
-- Total Revenue (dari stok terjual): Rp {revenue:,.0f}
-- Profit Saat Ini: Rp {profit:,.0f}
-- Profit Margin: {profit_margin_pct:.1f}%
-- Nilai Stok Sisa (di harga modal): Rp {stock_value_at_cost:,.0f}
-- Potensi Kerugian Jika Semua Rusak: Rp {potential_loss:,.0f}
+Buat laporan singkat dan praktis dengan format:
 
-TUGAS ANDA:
-===========
-Berdasarkan data di atas dan hasil prediksi model, lakukan analisis mendalam dan berikan rekomendasi operasional.
+## Ringkasan
 
-OUTPUT HARUS DALAM FORMAT BERIKUT (Gunakan heading dan formatting yang jelas):
+Jelaskan kondisi produk saat ini dalam 2-3 kalimat.
 
-1. **RINGKASAN KONDISI PRODUK**
-   - Berikan deskripsi terperinci kondisi produk saat ini.
-   - Sorot setidaknya 2-3 risiko utama dan kondisi kritis.
+## Faktor Utama
 
-2. **ANALISIS RISIKO**
-   - Jelaskan mengapa probabilitas risiko mencapai {prob*100:.2f}%.
-   - Identifikasi faktor utama yang mempengaruhi risiko.
-   - Bandingkan dengan standar industri atau praktik terbaik jika relevan.
+Sebutkan maksimal 3 faktor yang paling berpengaruh terhadap risiko.
 
-3. **FAKTOR YANG BERPENGARUH**
-   - Tampilkan 4-6 faktor kritis yang memengaruhi risiko.
-   - Jelaskan setiap faktor dengan dampak numerik atau level prioritas.
+## Rekomendasi
 
-4. **REKOMENDASI TINDAKAN**
-   - Berikan minimal 3 rekomendasi prioritas segera.
-   - Sertakan 2-3 rekomendasi jangka menengah (2-7 hari).
-   - Tambahkan 2-3 langkah preventif jangka panjang.
-   - Jelaskan alasan dan hasil yang diharapkan untuk setiap rekomendasi.
+Berikan maksimal 3 tindakan yang dapat dilakukan segera.
 
-5. **STRATEGI PENJUALAN**
-   - Usulkan strategi diskon optimal dengan angka/rentang diskon.
-   - Tentukan waktu pelaksanaan dan target segmen pelanggan.
-   - Sarankan metode promosi atau bundling spesifik.
-   - Sertakan proyeksi ROI atau dampak finansial singkat.
+## Kesimpulan
 
-6. **SARAN PENGELOLAAN INVENTARIS**
-   - Jelaskan cara terbaik menata dan menampilkan produk di rak.
-   - Sebutkan monitoring kritis yang harus dilaksanakan.
-   - Rekomendasikan koordinasi antar tim (warehouse, marketing, penjualan).
-   - Berikan mekanisme early warning untuk mencegah pembusukan.
+Berikan ringkasan singkat dalam 1-2 kalimat.
 
-7. **KESIMPULAN**
-   - Tuliskan ringkasan eksekutif 3-5 baris.
-   - Tegaskan 3 prioritas utama yang harus dilakukan hari ini.
+Aturan:
 
-KETENTUAN PENULISAN:
-- Gunakan Bahasa Indonesia yang profesional, jelas, dan komunikatif.
-- Tulis minimal 700 kata.
-- Jangan berhenti sebelum semua 7 bagian selesai.
-- Sajikan setiap poin dalam bullet atau subheading yang terstruktur.
-- Setiap rekomendasi harus memiliki dasar numerik atau alasan logis.
-- Hindari jawaban sangat singkat; berikan konteks, data, dan justifikasi.
-- Jika output tampak terputus, lanjutkan sampai semua bagian selesai.
-- Jika perlu, gunakan contoh tindakan operasional yang realistis.
-- Gunakan istilah yang mudah dipahami manajemen retail.
-
-BERIKAN jawaban yang komprehensif, spesifik, dan actionable.
-
-Mulai analisis sekarang:"""
+* Fokus pada tindakan operasional.
+* Gunakan bahasa Indonesia yang jelas dan profesional.
+* Maksimal 250 kata.
+* Hindari penjelasan teori machine learning.
+* Hindari pengulangan informasi input.
+* Prioritaskan informasi yang paling penting bagi manager toko.
+"""
 
 
 def copy_to_clipboard(text: str):
