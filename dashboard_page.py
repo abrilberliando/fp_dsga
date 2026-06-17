@@ -167,12 +167,11 @@ def load_data():
 @st.cache_resource(show_spinner=False)
 def load_fi():
     try:
-        import joblib
-        model_path   = os.path.join(BASE_DIR, "models", "xgboost_model.pkl")
-        feature_path = os.path.join(BASE_DIR, "models", "feature_names.pkl")
-        model = joblib.load(model_path)
-        names = joblib.load(feature_path)
-        fi = pd.DataFrame({"feature": names, "importance": model.feature_importances_})
+        import json
+        feature_path = os.path.join(BASE_DIR, "models", "feature_importances.json")
+        with open(feature_path, 'r') as f:
+            data = json.load(f)
+        fi = pd.DataFrame({"feature": list(data.keys()), "importance": list(data.values())})
         return fi.sort_values("importance", ascending=False).reset_index(drop=True)
     except Exception:
         return None

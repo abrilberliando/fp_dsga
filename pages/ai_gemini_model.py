@@ -15,7 +15,7 @@ import streamlit as st
 import google.generativeai as genai
 
 # ─── Page Config ──────────────────────────────────────────────────────────────
-st.set_page_config(layout="wide")
+
 
 # ─── Session State Initialization ─────────────────────────────────────────────
 if "gemini_test_result" not in st.session_state:

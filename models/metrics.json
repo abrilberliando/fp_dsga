@@ -1,1 +1,1 @@
-{"accuracy": 0.9244, "precision": 0.8624161073825504, "recall": 0.7271090534979424, "f1": 0.7890036282444879, "auc": 0.9606251529289828}
+{"Accuracy": 85.81, "Precision (Aman)": 0.88, "Recall (Aman)": 0.96, "Precision (Waspada)": 0.64, "Recall (Waspada)": 0.37, "F1-Score (Weighted)": 0.84}
