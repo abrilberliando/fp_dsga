@@ -1,418 +1,673 @@
+"""
+Halaman: Prediksi Risiko
+
+Prediksi risiko pembusukan produk dengan form card layout.
+Menampilkan hasil sebagai KPI card visual.
+Role-aware: Retail Manager melihat form simpel, Stakeholder Teknis
+mendapat akses field advanced.
+"""
+
 import streamlit as st
 import pandas as pd
 import time
 import sys
 import os
+from datetime import datetime
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+# add base directory to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.predictor import get_predictor
 from utils.gemini_analyzer import get_cached_or_generate_report, display_analysis_report
+from utils.theme import inject_css, COLORS, section_header, page_header, prediction_result_card
 
-st.set_page_config(
-    page_title="Prediksi Risiko Food Waste",
-    page_icon="🔮",
-    layout="wide"
-)
+inject_css()
+C = COLORS
 
-st.title("🔮 Prediksi Risiko Food Waste")
-st.caption("Analisis risiko pembusukan produk berdasarkan data stok dan model XGBoost")
-st.divider()
-
-# Load model safely
-try:
-    predictor = get_predictor()
-except Exception as e:
-    st.error("Gagal memuat model. Coba jalankan ulang python train_model.py")
-    st.stop()
-
-def init_state(key, default):
+# session state initialization
+def _init(key, default):
     if key not in st.session_state:
         st.session_state[key] = default
 
-init_state("category_ui", "Roti & Kue (Bakery)")
-init_state("quality_grade", "A - Sangat Baik")
-init_state("region", "Midwest")
-init_state("storage_temp", 4.0)
-init_state("temp_deviation", 1.0)
-init_state("temp_abuse_events", 0)
-init_state("distribution_hours", 24.0)
-init_state("shelf_life_days", 14)
-init_state("days_until_expiry", 7)
-init_state("days_remaining_at_purchase", 7)
-init_state("cost_price", 10000)
-init_state("base_price", 15000)
-init_state("selling_price", 15000)
-init_state("discount_pct", 0)
-init_state("markdown_applied", "Belum")
-init_state("initial_quantity", 20)
-init_state("units_sold", 5)
-init_state("daily_demand", 2)
-init_state("demand_variability", 0.5)
-init_state("handling_score", 8)
-init_state("packaging_score", 8)
-init_state("supplier_score", 8)
-init_state("spoilage_sensitivity", 0.50)
-init_state("spoilage_risk", 0.10)
-init_state("day_of_week", "Senin")
-init_state("is_weekend", "Bukan Weekend")
-init_state("month", 1)
-init_state("is_promoted", "Tidak")
-init_state("prediction_completed", False)
-init_state("last_prediction_prob", 0.0)
-init_state("last_prediction_input_data", None)
-init_state("last_prediction_feat_df", None)
-init_state("last_user_inputs_display", None)
-init_state("last_prediction_metrics", None)
-init_state("generating_analysis", False)
-init_state("force_regenerate_analysis", False)
-init_state("ai_analysis_report", None)
+_init("prediction_completed", False)
+_init("last_prediction_prob", 0.0)
+_init("last_prediction_input_data", None)
+_init("last_prediction_feat_df", None)
+_init("last_user_inputs_display", None)
+_init("last_prediction_metrics", None)
+_init("generating_analysis", False)
+_init("force_regenerate_analysis", False)
+_init("ai_analysis_report", None)
+_init("prediction_context", None)
 
-st.container()
+# lookup maps for form options
+CATEGORY_MAP = {
+    "Roti & Kue (Bakery)"           : "Bakery",
+    "Minuman (Beverages)"           : "Beverages",
+    "Susu & Olahannya (Dairy)"      : "Dairy",
+    "Daging Olahan & Keju (Deli)"   : "Deli",
+    "Makanan Beku (Frozen Meals)"   : "Frozen_Meals",
+    "Daging Mentah (Meat)"          : "Meat",
+    "Obat-obatan & Vaksin (Pharma)" : "Pharmaceuticals",
+    "Sayur & Buah Segar (Produce)"  : "Produce",
+    "Makanan Siap Saji (Ready Eat)" : "Ready_to_Eat",
+    "Makanan Laut (Seafood)"        : "Seafood",
+}
+STORAGE_TEMP_MAP = {
+    "Freezer (-18°C)"       : -18.0,
+    "Chiller / Kulkas (4°C)": 4.0,
+    "Suhu Ruang Ber-AC (20°C)": 20.0,
+    "Suhu Ruang Biasa (25°C)" : 25.0,
+    "Panas (>28°C)"         : 30.0,
+}
+TEMP_DEV_MAP = {
+    "Sangat Stabil (tidak berubah)" : 0.0,
+    "Stabil (berubah <1°C)"         : 0.5,
+    "Cukup Stabil (berubah 1–3°C)"  : 2.0,
+    "Tidak Stabil (berubah 3–5°C)"  : 4.0,
+    "Sangat Tidak Stabil (>5°C)"    : 7.0,
+}
+ABUSE_MAP = {
+    "Tidak Pernah (0×)"       : 0,
+    "Jarang (1–2×)"           : 1,
+    "Kadang-kadang (3–5×)"    : 4,
+    "Sering (6–10×)"          : 8,
+    "Sangat Sering (>10×)"    : 15,
+}
+PACKAGING_MAP = {
+    "Sempurna"       : 10,
+    "Sangat Baik"    : 9,
+    "Baik"           : 7,
+    "Standar"        : 5,
+    "Rusak"          : 3,
+    "Rusak Parah"    : 1,
+}
+HANDLING_MAP = {
+    "Sangat Hati-hati" : 10,
+    "Hati-hati"        : 8,
+    "Standar"          : 5,
+    "Kasar"            : 3,
+    "Sangat Kasar"     : 1,
+}
+SENSITIVITY_MAP = {
+    "Bakery":0.50,"Beverages":0.40,"Dairy":0.70,"Deli":0.75,
+    "Frozen_Meals":0.30,"Meat":0.90,"Pharmaceuticals":0.85,
+    "Produce":0.60,"Ready_to_Eat":0.90,"Seafood":0.95,
+}
+RISK_BASE_MAP = {
+    "Bakery":0.18,"Beverages":0.18,"Dairy":0.20,"Deli":0.20,
+    "Frozen_Meals":0.17,"Meat":0.20,"Pharmaceuticals":0.20,
+    "Produce":0.19,"Ready_to_Eat":0.22,"Seafood":0.21,
+}
 
-with st.container():
-    st.header("📋 Masukkan Data Produk")
-    st.info("💡 Semua data di bawah ini (dari Bagian 1 hingga 4) akan digabungkan untuk menghasilkan satu prediksi risiko yang akurat.")
-    
-    category_display_map = {
-        "Roti & Kue (Bakery)": "Bakery",
-        "Minuman (Beverages)": "Beverages",
-        "Susu & Olahannya (Dairy)": "Dairy",
-        "Daging Olahan & Keju (Deli)": "Deli",
-        "Makanan Beku (Frozen Meals)": "Frozen_Meals",
-        "Daging Mentah (Meat)": "Meat",
-        "Obat-obatan & Vaksin (Pharmaceuticals)": "Pharmaceuticals",
-        "Sayur & Buah Segar (Produce)": "Produce",
-        "Makanan Siap Saji (Ready to Eat)": "Ready_to_Eat",
-        "Makanan Laut (Seafood)": "Seafood"
-    }
+# load model
+try:
+    predictor = get_predictor()
+except Exception:
+    st.error("⚠️ Model tidak ditemukan. Jalankan `train_model.py` terlebih dahulu.")
+    st.stop()
 
-    with st.expander("1️⃣ Info Dasar Produk", expanded=True):
-        st.selectbox("Jenis Produk", list(category_display_map.keys()), key="category_ui")
-    
-    with st.expander("2️⃣ Kondisi Penyimpanan", expanded=True):
-        st.selectbox("Kondisi Suhu Penyimpanan", ["Chiller / Kulkas (4°C)", "Freezer (-18°C)", "Suhu Ruang Ber-AC (20°C)", "Suhu Ruang Biasa (25°C)", "Panas (>28°C)"], key="storage_temp_status")
-    
-    with st.expander("3️⃣ Masa Simpan & Stok", expanded=True):
-        st.number_input("Sisa hari sebelum kadaluarsa (hari)", min_value=0, value=7, key="days_until_expiry")
-    
-    with st.expander("4️⃣ Harga & Penjualan", expanded=True):
-        st.number_input("Harga modal per unit (Rp)", min_value=0.0, value=10.0, key="cost_price", help="Masukkan dalam denominasi asli (misal: 10 atau 15)")
-        st.number_input("Harga jual per unit (Rp)", min_value=0.0, value=15.0, key="selling_price")
-    
-    st.divider()
-    btn_predict = st.button("🔍 Cek Risiko Pembusukan Dari Seluruh Data", type="primary", use_container_width=True)
+# check user role
+is_retail = "Retail Manager" in st.session_state.get("user_role", "Retail Manager")
 
-with st.container():
-    st.header("📊 Hasil Prediksi")
+# page header
+page_header(
+    title="Prediksi Risiko Pembusukan",
+    subtitle="Analisis risiko spoilage produk perishable berbasis model XGBoost + logika bisnis retail",
+    icon="🔮",
+)
 
-    user_inputs_display = {
-        "category_display": st.session_state.get("category_ui", "Roti & Kue (Bakery)"),
-        "storage_temp_status": st.session_state.get("storage_temp_status", "Unknown")
-    }
+# Badge pills
+st.markdown("""
+<div style="margin:.5rem 0 1.2rem 0;">
+    <span class="pill pill-green">XGBoost · binary:logistic</span>
+    <span class="pill pill-blue">Input Produk Real-time</span>
+    <span class="pill pill-orange">AI Recommendation Ready</span>
+</div>
+""", unsafe_allow_html=True)
+
+st.divider()
+
+# input form column and results column
+col_form, col_result = st.columns([1, 1], gap="large")
+
+# input form column
+with col_form:
+    section_header("📋 Data Produk")
+
+    # card 1: product information
+    st.markdown("""
+<div class="input-card">
+    <div class="input-card-title">📦 Informasi Produk</div>
+</div>
+""", unsafe_allow_html=True)
+    cat_ui = st.selectbox(
+        "Jenis Produk",
+        options=list(CATEGORY_MAP.keys()),
+        key="pred_cat_ui",
+        help="Kategori produk menentukan sensitivitas spoilage bawaan",
+    )
+
+    # advanced fields: quality grade & region (stakeholder teknis only)
+    if not is_retail:
+        st.selectbox(
+            "Quality Grade",
+            options=["A - Sangat Baik", "B - Standar", "C - Kurang Baik"],
+            key="pred_quality_grade",
+        )
+        st.selectbox(
+            "Wilayah Distribusi",
+            options=["Midwest", "Northeast", "Southeast", "Southwest", "West"],
+            key="pred_region",
+        )
+
+    # card 2: storage conditions
+    st.markdown("""
+<div class="input-card" style="margin-top:.8rem;">
+    <div class="input-card-title">🌡️ Kondisi Penyimpanan</div>
+</div>
+""", unsafe_allow_html=True)
+    storage_opt = st.selectbox(
+        "Suhu Penyimpanan",
+        options=list(STORAGE_TEMP_MAP.keys()),
+        key="pred_storage",
+    )
+
+    if not is_retail:
+        st.selectbox(
+            "Stabilitas Suhu",
+            options=list(TEMP_DEV_MAP.keys()),
+            key="pred_temp_dev",
+        )
+        st.selectbox(
+            "Kejadian Abuse Suhu",
+            options=list(ABUSE_MAP.keys()),
+            key="pred_abuse",
+        )
+        st.selectbox(
+            "Kualitas Kemasan",
+            options=list(PACKAGING_MAP.keys()),
+            key="pred_packaging",
+        )
+        st.selectbox(
+            "Kualitas Penanganan",
+            options=list(HANDLING_MAP.keys()),
+            key="pred_handling",
+        )
+
+    # card 3: shelf life and stock
+    st.markdown("""
+<div class="input-card" style="margin-top:.8rem;">
+    <div class="input-card-title">📅 Masa Simpan & Stok</div>
+</div>
+""", unsafe_allow_html=True)
+    
+    # initial stock - displayed for all roles as it's important for operations
+    initial_qty = st.number_input(
+        "Stok awal (unit)",
+        min_value=1, max_value=10000, value=50, step=1,
+        key="pred_initial_qty",
+        help="Jumlah unit produk saat pertama kali masuk ke toko",
+    )
+    
+    # units sold - displayed for all roles
+    units_sold = st.number_input(
+        "Unit sudah terjual",
+        min_value=0, max_value=initial_qty, value=min(10, initial_qty), step=1,
+        key="pred_units_sold",
+        help="Berapa unit yang sudah berhasil dijual",
+    )
+    
+    # calculate and display remaining stock in real-time
+    sisa_stok_display = initial_qty - units_sold
+    if sisa_stok_display > 0:
+        stok_color = C['green'] if sisa_stok_display > initial_qty * 0.5 else C['orange'] if sisa_stok_display > initial_qty * 0.2 else C['red']
+        st.markdown(f"""
+<div style="font-size:.78rem; padding:.4rem .6rem; border-radius:6px;
+            background:rgba(76,175,80,.07); border:1px solid rgba(76,175,80,.2);
+            margin-top:.2rem; color:{stok_color}; font-weight:600;">
+    📦 Sisa Stok: {sisa_stok_display} unit ({sisa_stok_display/initial_qty*100:.0f}% dari stok awal)
+</div>
+""", unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+<div style="font-size:.78rem; padding:.4rem .6rem; border-radius:6px;
+            background:rgba(244,67,54,.07); border:1px solid rgba(244,67,54,.2);
+            margin-top:.2rem; color:{C['red']}; font-weight:600;">
+    ⚠️ Stok Habis Terjual
+</div>
+""", unsafe_allow_html=True)
+    
+    days_expiry = st.number_input(
+        "Sisa hari sebelum kadaluarsa",
+        min_value=0, max_value=730, value=7, step=1,
+        key="pred_days_expiry",
+        help="Masukkan berapa hari lagi produk ini kadaluarsa",
+    )
+
+    if not is_retail:
+        shelf_life = st.number_input(
+            "Total shelf life produk (hari)",
+            min_value=1, max_value=730, value=21, step=1,
+            key="pred_shelf_life",
+            help="Total masa simpan sejak produksi",
+        )
+
+    # card 4: price and margin
+    st.markdown("""
+<div class="input-card" style="margin-top:.8rem;">
+    <div class="input-card-title">💰 Harga & Margin</div>
+</div>
+""", unsafe_allow_html=True)
+    cost_price = st.number_input(
+        "Harga modal per unit (Rp)",
+        min_value=0.0, value=10000.0, step=500.0,
+        key="pred_cost",
+        format="%.0f",
+    )
+    sell_price = st.number_input(
+        "Harga jual per unit (Rp)",
+        min_value=0.0, value=15000.0, step=500.0,
+        key="pred_sell",
+        format="%.0f",
+    )
+
+    # calculate margin automatically
+    if cost_price > 0 and sell_price > 0:
+        markup = (sell_price - cost_price) / cost_price * 100
+        margin_col = C["green"] if markup > 0 else C["red"]
+        sign = "+" if markup >= 0 else ""
+        st.markdown(f"""
+<div style="font-size:.78rem; padding:.4rem .6rem; border-radius:6px;
+            background:rgba(76,175,80,.07); border:1px solid rgba(76,175,80,.2);
+            margin-top:.2rem; color:{margin_col}; font-weight:600;">
+    💹 Markup: {sign}{markup:.1f}% &nbsp;·&nbsp;
+    Margin: Rp {(sell_price - cost_price):,.0f}/unit
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    btn_predict = st.button(
+        "🔍 Analisis Risiko Pembusukan",
+        type="primary",
+        use_container_width=True,
+        key="btn_predict_main",
+    )
+
+# results column
+with col_result:
+    section_header("📊 Hasil Analisis")
 
     show_results = btn_predict or st.session_state.prediction_completed
 
-    revenue = 0.0
-    profit = 0.0
-    profit_margin_pct = 0.0
-    discount_pct = 0.0
-    markdown_applied = 0
-    sisa_stok = 0
-    potensi_rugi = 0.0
+    if not show_results:
+        st.markdown(f"""
+<div class="ibox blue" style="text-align:center; padding:2rem;">
+    <div style="font-size:2.5rem; margin-bottom:.8rem;">🔮</div>
+    <div style="font-size:.95rem; font-weight:600; color:{C['text']}; margin-bottom:.4rem;">
+        Belum Ada Prediksi
+    </div>
+    <div style="font-size:.8rem; color:{C['muted']};">
+        Isi data produk di kiri lalu klik<br>
+        <b>Analisis Risiko Pembusukan</b>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     if show_results:
+        # run new prediction
         if btn_predict:
-            with st.spinner("Sedang menganalisis produk..."):
-                time.sleep(1)
+            with st.spinner("⏳ Menganalisis produk..."):
+                time.sleep(0.8)
 
-                # Set dummy data for removed fields
-                dummy_initial_quantity = 50
-                dummy_units_sold = 10
-                dummy_shelf_life_days = st.session_state.days_until_expiry + 14
+                cat = CATEGORY_MAP[cat_ui]
 
-                # Calculations
-                revenue = st.session_state.selling_price * dummy_units_sold
-                profit = revenue - (st.session_state.cost_price * dummy_initial_quantity)
-                profit_margin_pct = (profit / revenue * 100) if revenue > 0 else 0.0
+                # get stock values from input (all roles now have access to these fields)
+                initial_qty     = st.session_state.get("pred_initial_qty", 50)
+                units_sold_val  = st.session_state.get("pred_units_sold", 10)
 
-                discount_pct = 0.0
-                markdown_applied = 0
+                # advanced values: use user input (stakeholder) or defaults (retail)
+                if is_retail:
+                    quality_grade   = "A"
+                    region          = "Midwest"
+                    temp_deviation  = 0.0
+                    temp_abuse      = 0
+                    packaging_score = 9
+                    handling_score  = 9
+                    shelf_life_days = days_expiry + 14
+                else:
+                    grade_raw       = st.session_state.get("pred_quality_grade", "A - Sangat Baik")
+                    quality_grade   = grade_raw.split(" - ")[0]
+                    region          = st.session_state.get("pred_region", "Midwest")
+                    temp_deviation  = TEMP_DEV_MAP.get(st.session_state.get("pred_temp_dev","Sangat Stabil (tidak berubah)"), 0.0)
+                    temp_abuse      = ABUSE_MAP.get(st.session_state.get("pred_abuse","Tidak Pernah (0×)"), 0)
+                    packaging_score = PACKAGING_MAP.get(st.session_state.get("pred_packaging","Sangat Baik"), 9)
+                    handling_score  = HANDLING_MAP.get(st.session_state.get("pred_handling","Hati-hati"), 8)
+                    shelf_life_days = st.session_state.get("pred_shelf_life", 21)
 
-                # Prepare data dict
-                quality_map = {"A - Sangat Baik": "A", "B - Standar": "B", "C - Kurang Baik": "C"}
-                packaging_map = {
-                    "Sempurna": 10, "Sangat Baik": 9, "Baik": 7,
-                    "Biasa / Standar": 5, "Rusak": 3, "Rusak Parah": 1
-                }
-                handling_map = {
-                    "Sangat Hati-hati": 10, "Hati-hati": 8, "Biasa / Standar": 5,
-                    "Kasar": 3, "Sangat Kasar": 1
-                }
-                storage_temp_map = {
-                    "Freezer (-18°C)": -18.0, "Chiller / Kulkas (4°C)": 4.0,
-                    "Suhu Ruang Ber-AC (20°C)": 20.0, "Suhu Ruang Biasa (25°C)": 25.0, "Panas (>28°C)": 30.0
-                }
-                temp_dev_map = {
-                    "Sangat Stabil (Tidak berubah)": 0.0, "Stabil (Berubah <1°C)": 0.5,
-                    "Cukup Stabil (Berubah 1-3°C)": 2.0, "Tidak Stabil (Berubah 3-5°C)": 4.0,
-                    "Sangat Tidak Stabil (>5°C)": 7.0
-                }
-                abuse_events_map = {
-                    "Tidak Pernah (0 kali)": 0, "Jarang (1-2 kali)": 1,
-                    "Kadang-kadang (3-5 kali)": 4, "Sering (6-10 kali)": 8, "Sangat Sering (>10 kali)": 15
-                }
-
-                cat = category_display_map[st.session_state.category_ui]
-                sensitivity_map = {
-                    "Bakery": 0.50, "Beverages": 0.40, "Dairy": 0.70, "Deli": 0.75,
-                    "Frozen_Meals": 0.30, "Meat": 0.90, "Pharmaceuticals": 0.85,
-                    "Produce": 0.60, "Ready_to_Eat": 0.90, "Seafood": 0.95
-                }
-                risk_map = {
-                    "Bakery": 0.18, "Beverages": 0.18, "Dairy": 0.20, "Deli": 0.20,
-                    "Frozen_Meals": 0.17, "Meat": 0.20, "Pharmaceuticals": 0.20,
-                    "Produce": 0.19, "Ready_to_Eat": 0.22, "Seafood": 0.21
-                }
+                storage_temp = STORAGE_TEMP_MAP.get(storage_opt, 4.0)
+                revenue      = sell_price * units_sold_val
+                profit       = revenue - (cost_price * initial_qty)
+                profit_m_pct = (profit / revenue * 100) if revenue > 0 else 0.0
+                sisa_stok    = max(0, initial_qty - units_sold_val)
 
                 input_data = {
-                    "category": cat,
-                    "region": "Midwest",
-                    "quality_grade": "A", # Default Sangat Baik (Asumsi optimal karena disembunyikan)
-                    "storage_temp": storage_temp_map.get(st.session_state.storage_temp_status, 4.0),
-                    "temp_deviation": 0.0, # Default Sangat Stabil
-                    "handling_score": 9, # Default Sangat Hati-hati
-                    "packaging_score": 9, # Default Sangat Baik
-                    "base_price": st.session_state.selling_price,
-                    "cost_price": st.session_state.cost_price,
-                    "daily_demand": 5.0, # Asumsi demand tinggi (laku)
-                    "initial_quantity": dummy_initial_quantity,
-                    "days_until_expiry": st.session_state.days_until_expiry,
-                    "temp_abuse_events": 0, # Default Tidak pernah
-                    "shelf_life_days": dummy_shelf_life_days,
-                    "supplier_score": 9,
-                    "spoilage_sensitivity": sensitivity_map.get(cat, 0.50),
-                    "distribution_hours": 12.0, # Asumsi distribusi cepat
-                    "days_remaining_at_purchase": st.session_state.days_until_expiry,
-                    "selling_price": st.session_state.selling_price,
-                    "discount_pct": discount_pct,
-                    "markdown_applied": markdown_applied,
-                    "units_sold": dummy_units_sold,
-                    "demand_variability": 0.2, # Asumsi stabil
-                    "spoilage_risk": risk_map.get(cat, 0.18),
-                    "day_of_week": 0,
-                    "is_weekend": 0,
-                    "month": 1,
-                    "is_promoted": 0,
-                    "revenue": revenue,
-                    "profit": profit,
-                    "profit_margin_pct": profit_margin_pct
+                    "category"               : cat,
+                    "region"                 : region,
+                    "quality_grade"          : quality_grade,
+                    "storage_temp"           : storage_temp,
+                    "temp_deviation"         : temp_deviation,
+                    "handling_score"         : handling_score,
+                    "packaging_score"        : packaging_score,
+                    "base_price"             : sell_price,
+                    "cost_price"             : cost_price,
+                    "daily_demand"           : 5.0,
+                    "initial_quantity"       : initial_qty,
+                    "days_until_expiry"      : days_expiry,
+                    "temp_abuse_events"      : temp_abuse,
+                    "shelf_life_days"        : shelf_life_days,
+                    "supplier_score"         : 9,
+                    "spoilage_sensitivity"   : SENSITIVITY_MAP.get(cat, 0.50),
+                    "distribution_hours"     : 12.0,
+                    "days_remaining_at_purchase": days_expiry,
+                    "selling_price"          : sell_price,
+                    "discount_pct"           : 0.0,
+                    "markdown_applied"       : 0,
+                    "units_sold"             : units_sold_val,
+                    "demand_variability"     : 0.2,
+                    "spoilage_risk"          : RISK_BASE_MAP.get(cat, 0.18),
+                    "day_of_week"            : 0,
+                    "is_weekend"             : 0,
+                    "month"                  : 1,
+                    "is_promoted"            : 0,
+                    "revenue"                : revenue,
+                    "profit"                 : profit,
+                    "profit_margin_pct"      : profit_m_pct,
                 }
 
                 prob, feat_df = predictor.predict(input_data)
-                
-                # --- LONG EXPIRY SAFEGUARD (AI Hallucination Fix) ---
-                # Jika user memasukkan sisa hari yang sangat besar (misal 360 hari),
-                # model XGBoost bisa bingung karena di luar kebiasaan data pelatihan.
-                # Kita paksa turunkan risikonya karena barang yang kadaluarsanya masih lama = AMAN.
-                if st.session_state.days_until_expiry > 90:
-                    prob = prob * 0.10
-                elif st.session_state.days_until_expiry > 30:
-                    prob = prob * 0.30
-                elif st.session_state.days_until_expiry > 14:
-                    prob = prob * 0.60
 
-                sisa_stok = dummy_initial_quantity - dummy_units_sold
-                
-                # --- EXPIRY PENALTY LOGIC ---
-                # Semakin dekat kadaluarsa dan masih ada stok, risiko membusuk meroket tajam
+                # business logic adjustments
+                if days_expiry > 90:
+                    prob *= 0.10
+                elif days_expiry > 30:
+                    prob *= 0.30
+                elif days_expiry > 14:
+                    prob *= 0.60
+
                 if sisa_stok > 0:
-                    if st.session_state.days_until_expiry == 0:
-                        prob += 0.70  # Sangat fatal, pasti terbuang besok jika tidak laku hari ini
-                    elif st.session_state.days_until_expiry <= 2:
+                    if days_expiry == 0:
+                        prob += 0.70
+                    elif days_expiry <= 2:
                         prob += 0.40
-                    elif st.session_state.days_until_expiry <= 5:
+                    elif days_expiry <= 5:
                         prob += 0.15
 
+                if cat in ["Frozen_Meals","Meat","Seafood","Dairy"] and storage_temp >= 20.0:
+                    prob = max(prob, 0.90)
 
-                    
-                # --- FROZEN FOOD FATAL TEMPERATURE LOGIC ---
-                # Jika makanan rentan beku (Frozen Meals, Meat, Seafood) ditaruh di suhu ruang (>= 20C),
-                # barang akan mencair dan busuk dalam hitungan jam, berapapun sisa hari kadaluarsanya!
-                if cat in ["Frozen_Meals", "Meat", "Seafood", "Dairy"] and input_data["storage_temp"] >= 20.0:
-                    prob = max(prob, 0.90)  # Paksa jadi Sangat Berbahaya (90%)
-                    
-                # --- PRICING PENALTY LOGIC ---
-                # Jika markup harga terlalu tinggi (>50%), risiko basi naik tajam karena sepi pembeli
-                markup = (st.session_state.selling_price - st.session_state.cost_price) / (st.session_state.cost_price + 1e-6)
-                if markup > 0.50 and sisa_stok > 0:
-                    penalty = min(0.40, (markup - 0.50) * 0.30)
-                    prob += penalty
+                markup_ratio = (sell_price - cost_price) / (cost_price + 1e-6)
+                if markup_ratio > 0.50 and sisa_stok > 0:
+                    prob += min(0.40, (markup_ratio - 0.50) * 0.30)
 
                 prob = min(0.999, prob)
 
-                st.session_state.prediction_completed = True
-                st.session_state.last_prediction_prob = prob
-                st.session_state.last_prediction_input_data = input_data
-                st.session_state.last_prediction_feat_df = feat_df
-                st.session_state.last_user_inputs_display = user_inputs_display
-                st.session_state.last_prediction_metrics = {
-                    "revenue": revenue,
-                    "profit": profit,
-                    "profit_margin_pct": profit_margin_pct,
-                    "discount_pct": discount_pct,
-                    "markdown_applied": markdown_applied,
-                    "sisa_stok": sisa_stok,
-                    "potensi_rugi": sisa_stok * st.session_state.cost_price,
+                user_inputs_display = {
+                    "category_display"    : cat_ui,
+                    "storage_temp_status" : storage_opt,
                 }
+
+                # save to session state
+                st.session_state.prediction_completed     = True
+                st.session_state.last_prediction_prob     = prob
+                st.session_state.last_prediction_input_data = input_data
+                st.session_state.last_prediction_feat_df  = feat_df
+                st.session_state.last_user_inputs_display = user_inputs_display
+                st.session_state.last_prediction_metrics  = {
+                    "revenue"         : revenue,
+                    "profit"          : profit,
+                    "profit_margin_pct": profit_m_pct,
+                    "sisa_stok"       : sisa_stok,
+                    "potensi_rugi"    : sisa_stok * cost_price,
+                }
+                # context for ai assistant chat
+                if prob < 0.25:
+                    risk_level_str = "AMAN"
+                elif prob < 0.50:
+                    risk_level_str = "WASPADA"
+                else:
+                    risk_level_str = "BERISIKO TINGGI"
+
+                st.session_state.prediction_context = {
+                    "product_type"       : cat_ui,
+                    "category_raw"       : cat,
+                    "risk_level"         : risk_level_str,
+                    "risk_probability"   : round(prob * 100, 1),
+                    "days_until_expiry"  : days_expiry,
+                    "storage_condition"  : storage_opt,
+                    "cost_price"         : cost_price,
+                    "selling_price"      : sell_price,
+                    "sisa_stok"          : sisa_stok,
+                    "timestamp"          : datetime.now().strftime("%d/%m/%Y %H:%M"),
+                }
+                # reset old ai report cache when new data arrives
+                st.session_state.ai_analysis_report = None
+
         else:
-            input_data = st.session_state.last_prediction_input_data
-            prob = st.session_state.last_prediction_prob
-            feat_df = st.session_state.last_prediction_feat_df
-            user_inputs_display = st.session_state.last_user_inputs_display or user_inputs_display
-            metrics = st.session_state.last_prediction_metrics or {}
-            revenue = metrics.get("revenue", 0)
-            profit = metrics.get("profit", 0)
-            profit_margin_pct = metrics.get("profit_margin_pct", 0.0)
-            discount_pct = metrics.get("discount_pct", 0.0)
-            markdown_applied = metrics.get("markdown_applied", 0)
-            sisa_stok = metrics.get("sisa_stok", 40) # dummy sisa stok
-            potensi_rugi = metrics.get("potensi_rugi", sisa_stok * st.session_state.cost_price)
+            # retrieve from session state
+            input_data         = st.session_state.last_prediction_input_data
+            prob               = st.session_state.last_prediction_prob
+            feat_df            = st.session_state.last_prediction_feat_df
+            user_inputs_display= st.session_state.last_user_inputs_display or {}
+            metrics            = st.session_state.last_prediction_metrics or {}
+            revenue            = metrics.get("revenue", 0)
+            profit             = metrics.get("profit", 0)
+            profit_m_pct       = metrics.get("profit_margin_pct", 0.0)
+            sisa_stok          = metrics.get("sisa_stok", 0)
 
             if input_data is None:
-                st.info("👈 Silakan klik tombol **Cek Risiko Pembusukan** untuk menjalankan prediksi terlebih dahulu.")
+                st.info("👈 Klik tombol **Analisis Risiko** untuk memulai prediksi.")
                 st.stop()
 
+        # prediction result card
         if prob < 0.25:
-            st.success(f"🟢 AMAN — Risiko Rendah ({prob*100:.1f}%)")
-            st.markdown("- Produk dalam kondisi baik\n- Lanjutkan penyimpanan sesuai prosedur\n- Pantau kembali jika mendekati tanggal kadaluarsa")
+            res_cls, res_label, res_badge, res_sub = (
+                "res-green", "AMAN",
+                "Risiko Rendah",
+                "Produk dalam kondisi baik. Lanjutkan prosedur penyimpanan normal.",
+            )
         elif prob < 0.50:
-            st.warning(f"🟡 WASPADA — Risiko Sedang ({prob*100:.1f}%)")
-            st.markdown("- Periksa kondisi suhu penyimpanan sekarang\n- Pertimbangkan diskon 10–20%\n- Pindahkan ke rak yang lebih terlihat pelanggan\n- Cek ulang kondisi kemasan produk")
+            res_cls, res_label, res_badge, res_sub = (
+                "res-orange", "WASPADA",
+                "Risiko Sedang",
+                "Ada faktor yang perlu diperhatikan. Pertimbangkan tindakan pencegahan.",
+            )
         else:
-            st.error(f"🔴 BERISIKO TINGGI — Tindakan Segera! ({prob*100:.1f}%)")
-            st.markdown("- Segera berikan diskon 25–40%\n- Lakukan flash sale atau bundling hari ini\n- Pindahkan ke area promosi / rak depan\n- Periksa dan perbaiki kondisi suhu penyimpanan\n- Laporkan ke manajer toko untuk tindakan lanjut")
+            res_cls, res_label, res_badge, res_sub = (
+                "res-red", "BERISIKO TINGGI",
+                "Tindakan Segera!",
+                "Produk memerlukan penanganan hari ini untuk mencegah kerugian.",
+            )
 
-        st.divider()
-        st.subheader("💡 Rekomendasi Tindakan")
+        prediction_result_card(prob, res_label, res_sub, res_badge, res_cls)
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        # Logika Saran Diskon yang mempertimbangkan margin profit
-        if st.session_state.selling_price <= st.session_state.cost_price:
-            # Jika sudah tidak profit (jual modal / rugi)
-            if prob < 0.50:
-                saran_diskon = "0% (Sudah Harga Modal)"
-            else:
-                saran_diskon = "10% - 30% (Cuci Gudang / Potong Rugi)"
+        # kpi metrics row
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.markdown(f"""
+<div class="kpi-wrap kpi-blue">
+    <span class="kpi-icon">📅</span>
+    <div class="kpi-lbl">Sisa Kadaluarsa</div>
+    <div class="kpi-val">{days_expiry}</div>
+    <div class="kpi-sub neu">hari lagi</div>
+</div>""", unsafe_allow_html=True)
+        with m2:
+            st.markdown(f"""
+<div class="kpi-wrap kpi-orange">
+    <span class="kpi-icon">📦</span>
+    <div class="kpi-lbl">Sisa Stok</div>
+    <div class="kpi-val">{sisa_stok}</div>
+    <div class="kpi-sub neu">unit tersisa</div>
+</div>""", unsafe_allow_html=True)
+        with m3:
+            potensi_rugi = sisa_stok * input_data.get("cost_price", 0)
+            st.markdown(f"""
+<div class="kpi-wrap kpi-red">
+    <span class="kpi-icon">💸</span>
+    <div class="kpi-lbl">Potensi Rugi</div>
+    <div class="kpi-val">Rp{potensi_rugi/1000:.0f}k</div>
+    <div class="kpi-sub dn">jika tidak laku</div>
+</div>""", unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # discount suggestion
+        sell_p = input_data.get("selling_price", 0)
+        cost_p = input_data.get("cost_price", 0)
+        if sell_p <= cost_p:
+            saran_diskon = "0% — Sudah harga modal" if prob < 0.50 else "10%–30% — Cuci gudang / potong rugi"
         else:
-            # Jika masih ada profit
             if prob < 0.25:
-                saran_diskon = "0% (Harga Normal)"
+                saran_diskon = "0% — Harga normal"
             elif prob < 0.50:
-                saran_diskon = "10% - 20%"
+                saran_diskon = "10%–20%"
             else:
-                saran_diskon = "30% - 50% (Flash Sale)"
+                saran_diskon = "30%–50% — Flash Sale hari ini"
 
-        st.metric("🏷️ Saran Diskon Optimal", saran_diskon)
+        st.markdown(f"""
+<div class="ibox {'green' if prob < 0.25 else 'orange' if prob < 0.50 else 'red'}">
+    🏷️ <b>Saran Diskon Optimal:</b> &nbsp;<span style="font-size:1rem;font-weight:800;">{saran_diskon}</span>
+</div>
+""", unsafe_allow_html=True)
 
-        with st.expander("📊 Faktor Penyebab Paling Berpengaruh"):
+        # action recommendations
+        if prob < 0.25:
+            actions = [
+                "Lanjutkan penyimpanan sesuai prosedur normal",
+                "Pantau ulang saat mendekati 5 hari kadaluarsa",
+                "Pastikan rotasi stok FIFO diterapkan",
+            ]
+        elif prob < 0.50:
+            actions = [
+                "Periksa kondisi suhu penyimpanan sekarang",
+                "Pertimbangkan diskon 10–20% untuk percepat penjualan",
+                "Pindahkan ke rak yang lebih terlihat pelanggan",
+                "Cek ulang kondisi kemasan produk",
+            ]
+        else:
+            actions = [
+                "Berikan diskon 25–40% segera hari ini",
+                "Lakukan flash sale atau program bundling",
+                "Pindahkan ke area promosi / rak paling depan",
+                "Periksa dan perbaiki sistem pendinginan",
+                "Laporkan ke manajer toko untuk keputusan lanjut",
+            ]
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"""
+<div class="sec-hdr">
+    <div class="sec-dot"></div>
+    <h3>💡 Rekomendasi Tindakan</h3>
+</div>
+""", unsafe_allow_html=True)
+        for action in actions:
+            st.markdown(f"- {action}")
+
+        # shortcut button to ai assistant
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"""
+<div class="ibox blue" style="text-align:center;">
+    <b>Ingin analisis lebih mendalam?</b><br>
+    <span style="font-size:.78rem;">Buka <b>AI Assistant</b> di menu navigasi untuk tanya-jawab
+    seputar produk ini dengan Gemini AI.</span>
+</div>
+""", unsafe_allow_html=True)
+
+
+# bottom section: contributing factors and ai report (full width)
+if show_results and st.session_state.prediction_completed:
+    st.divider()
+
+    # contributing factors (stakeholder teknis only)
+    if not is_retail:
+        section_header("🔬 Faktor Penyebab Teknis")
+        feat_df = st.session_state.last_prediction_feat_df
+        if feat_df is not None:
             display_df = feat_df.copy()
-            # Hapus kolom teknis agar tidak membingungkan user awam
             if "Fitur Teknis" in display_df.columns:
                 display_df = display_df.drop(columns=["Fitur Teknis"])
-            
             st.dataframe(
-                display_df, 
-                use_container_width=True, 
+                display_df,
+                use_container_width=True,
                 hide_index=True,
                 column_config={
                     "Pengaruh (%)": st.column_config.NumberColumn(
                         "Tingkat Pengaruh",
-                        help="Seberapa besar faktor ini berkontribusi terhadap risiko pembusukan",
-                        format="%.1f%%"
+                        format="%.1f%%",
                     ),
                     "Penyebab (Faktor Utama)": st.column_config.TextColumn(
-                        "Faktor Penyebab Utama",
-                        width="large"
-                    )
-                }
+                        "Faktor Penyebab Utama", width="large"
+                    ),
+                },
             )
 
-        st.divider()
-        st.subheader("🤖 AI Analysis Report")
-        st.caption("Analisis mendalam dan rekomendasi berbasis AI menggunakan Gemini")
+    # ai analysis report
+    section_header("🤖 AI Analysis Report")
+    st.caption("Analisis mendalam dan rekomendasi berbasis Gemini AI")
 
-        api_key = st.session_state.get("llm_api_key", "")
-        if not api_key:
-            st.warning(
-                "⚠️ API Key belum dikonfigurasi.\n\n"
-                "Untuk menggunakan fitur AI Analysis Report, silakan isi "
-                "**Gemini API Key** di sidebar terlebih dahulu.",
-                icon="🔑"
-            )
-        else:
-            col_generate, col_refresh = st.columns([4, 1])
-            with col_generate:
-                if st.button(
-                    "📄 Generate AI Analysis Report",
-                    key="btn_generate_analysis",
-                    type="primary",
-                    use_container_width=True
-                ):
-                    st.session_state.generating_analysis = True
-            with col_refresh:
-                if st.button(
-                    "🔄",
-                    key="btn_refresh_analysis",
-                    help="Force regenerate analysis (ignore cache)",
-                    use_container_width=True
-                ):
-                    st.session_state.force_regenerate_analysis = True
+    api_key = st.session_state.get("llm_api_key", "")
+    input_data  = st.session_state.last_prediction_input_data
+    prob        = st.session_state.last_prediction_prob
+    user_inputs = st.session_state.last_user_inputs_display or {}
 
-            if st.session_state.get("generating_analysis") or st.session_state.get("force_regenerate_analysis"):
-                with st.spinner("⏳ Sedang menganalisis data produk dengan AI..."):
-                    report = get_cached_or_generate_report(
-                        input_data=input_data,
-                        prob=prob,
-                        user_inputs=user_inputs_display,
-                        force_regenerate=st.session_state.get("force_regenerate_analysis", False)
-                    )
-                    if report:
-                        st.session_state.ai_analysis_report = report
-                        st.session_state.generating_analysis = False
-                        st.session_state.force_regenerate_analysis = False
-                        st.rerun()
-                    else:
-                        st.error(
-                            "❌ Gagal generate analysis.\n\n"
-                            "Kemungkinan penyebab:\n"
-                            "- API Key tidak valid\n"
-                            "- Koneksi internet terputus\n"
-                            "- Rate limit API tercapai"
-                        )
-                        st.session_state.generating_analysis = False
-                        st.session_state.force_regenerate_analysis = False
-
-            if "ai_analysis_report" in st.session_state and st.session_state.ai_analysis_report:
-                st.markdown(
-                    """
-                    <div style="
-                        background: rgba(76, 175, 80, 0.05);
-                        border-left: 4px solid #4caf50;
-                        padding: 16px;
-                        border-radius: 6px;
-                        margin: 16px 0;
-                    ">
-                    """,
-                    unsafe_allow_html=True
-                )
-                display_analysis_report(st.session_state.ai_analysis_report)
-                st.markdown("</div>", unsafe_allow_html=True)
-                st.caption(
-                    "✓ Hasil analisis telah di-cache. Klik 🔄 untuk generate ulang."
-                )
-            else:
-                st.info(
-                    "👆 Klik tombol **Generate AI Analysis Report** untuk mendapatkan "
-                    "rekomendasi mendalam dari AI berdasarkan data produk dan hasil prediksi."
-                )
+    if not api_key:
+        st.markdown(f"""
+<div class="ibox orange">
+    <b>API Key belum dikonfigurasi.</b><br>
+    Isi <b>Gemini API Key</b> di sidebar untuk mengaktifkan fitur AI Analysis Report.
+</div>
+""", unsafe_allow_html=True)
     else:
-        st.info("👈 Silakan isi data produk di sebelah kiri dan klik tombol **Cek Risiko Pembusukan**.")
+        col_gen, col_ref = st.columns([5, 1])
+        with col_gen:
+            if st.button(
+                "📄 Generate AI Analysis Report",
+                key="btn_gen_ai",
+                type="primary",
+                use_container_width=True,
+            ):
+                st.session_state.generating_analysis = True
+        with col_ref:
+            if st.button("🔄", key="btn_ref_ai", help="Generate ulang (abaikan cache)", use_container_width=True):
+                st.session_state.force_regenerate_analysis = True
+
+        if st.session_state.get("generating_analysis") or st.session_state.get("force_regenerate_analysis"):
+            with st.spinner("⏳ Menganalisis dengan Gemini AI..."):
+                report = get_cached_or_generate_report(
+                    input_data=input_data,
+                    prob=prob,
+                    user_inputs=user_inputs,
+                    force_regenerate=st.session_state.get("force_regenerate_analysis", False),
+                )
+                if report:
+                    st.session_state.ai_analysis_report = report
+                    st.session_state.generating_analysis = False
+                    st.session_state.force_regenerate_analysis = False
+                    st.rerun()
+                else:
+                    st.error("❌ Gagal generate. Periksa API Key atau koneksi internet.")
+                    st.session_state.generating_analysis = False
+                    st.session_state.force_regenerate_analysis = False
+
+        if st.session_state.get("ai_analysis_report"):
+            st.markdown('<div class="ai-report-card">', unsafe_allow_html=True)
+            display_analysis_report(st.session_state.ai_analysis_report)
+            st.markdown('</div>', unsafe_allow_html=True)
+            st.caption("✓ Hasil di-cache. Klik 🔄 untuk generate ulang.")
+        else:
+            st.markdown(f"""
+<div class="ibox green" style="text-align:center;">
+    Klik <b>Generate AI Analysis Report</b> untuk mendapatkan rekomendasi
+    mendalam dari Gemini berdasarkan data produk ini.
+</div>
+""", unsafe_allow_html=True)

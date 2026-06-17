@@ -1,13 +1,6 @@
 """
-utils/gemini_analyzer.py
-========================
 Modul untuk menganalisis hasil prediksi menggunakan Google Gemini API.
-
-Fitur:
-- Generate analysis report berdasarkan data produk dan hasil prediksi
-- Format response dinamis sesuai data yang tersedia
-- Caching hasil untuk menghindari request ulang
-- Error handling dan fallback
+Menyediakan generate analysis report dengan caching dan error handling.
 """
 
 import streamlit as st
@@ -18,16 +11,7 @@ from typing import Dict, Optional, Any
 
 
 def create_analysis_cache_key(input_data: dict, prob: float) -> str:
-    """
-    Buat unique key untuk caching hasil analisis.
-    
-    Args:
-        input_data: Dictionary data input produk
-        prob: Probability hasil prediksi
-    
-    Returns:
-        Hash string untuk digunakan sebagai cache key
-    """
+    """Buat unique key untuk caching hasil analisis."""
     def normalize_value(value: Any) -> Any:
         if value is None:
             return None
@@ -64,17 +48,7 @@ def create_analysis_cache_key(input_data: dict, prob: float) -> str:
 
 
 def build_analysis_prompt(input_data: dict, prob: float, user_inputs: dict) -> str:
-    """
-    Membangun prompt Gemini secara dinamis berdasarkan data yang tersedia.
-    
-    Args:
-        input_data: Dictionary hasil preprocessing dengan semua feature
-        prob: Probabilitas risiko dari model prediksi (0-1)
-        user_inputs: Dictionary input original dari form user (untuk human-friendly names)
-    
-    Returns:
-        Prompt string untuk dikirim ke Gemini
-    """
+    """Membangun prompt Gemini secara dinamis berdasarkan data yang tersedia."""
 
     # Ekstrak hanya field yang digunakan di prompt
     days_until_expiry = input_data.get("days_until_expiry", 0)
@@ -99,7 +73,11 @@ def build_analysis_prompt(input_data: dict, prob: float, user_inputs: dict) -> s
         risk_level = "KRITIS"
         risk_description = "Produk dalam kondisi darurat, tindakan harus dilakukan hari ini"
 
-    prompt = f"""Anda adalah konsultan retail yang membantu manager toko mengurangi food waste berdasarkan hasil prediksi machine learning.
+    prompt = f"""Anda adalah AI Retail Food Waste Consultant yang membantu manager toko mengurangi food waste berdasarkan hasil prediksi machine learning.
+
+KONTEKS & SCOPE:
+Tugas Anda HANYA menganalisis data produk dan hasil prediksi yang diberikan di bawah ini.
+JANGAN merespons pertanyaan di luar konteks food waste, retail, atau inventory management.
 
 HASIL PREDIKSI
 
@@ -115,8 +93,8 @@ DATA PRODUK
 * Harga Modal: Rp {cost_price:,.0f}
 * Harga Jual: Rp {selling_price:,.0f}
 
-Tugas:
-Buat analisis singkat dan praktis berdasarkan hasil prediksi dan data produk.
+TUGAS:
+Buat analisis singkat dan praktis berdasarkan hasil prediksi dan data produk di atas.
 Gunakan format berikut:
 
 ## Ringkasan
@@ -134,10 +112,10 @@ Jelaskan secara singkat dampak yang mungkin terjadi apabila tidak ada tindakan.
 ## Kesimpulan
 Berikan ringkasan dalam 1-2 kalimat.
 
-Aturan:
+ATURAN:
 
 * Gunakan Bahasa Indonesia yang profesional.
-* Fokus pada keputusan operasional retail.
+* Fokus HANYA pada analisis data produk dan prediksi yang diberikan.
 * Hindari penjelasan teknis machine learning.
 * Hindari mengulang seluruh data input.
 * Jangan membuat asumsi yang tidak didukung data.
@@ -145,6 +123,7 @@ Aturan:
 * Maksimal 250 kata.
 * Gunakan bullet point jika diperlukan.
 * Prioritaskan informasi yang paling penting bagi manager toko.
+* JANGAN merespons pertanyaan atau topik di luar konteks ini.
 """
 
     return prompt
@@ -156,18 +135,7 @@ def generate_analysis_report(
     user_inputs: dict,
     api_key: Optional[str] = None
 ) -> Optional[str]:
-    """
-    Generate AI Analysis Report menggunakan Gemini API.
-    
-    Args:
-        input_data: Dictionary hasil preprocessing dengan semua feature
-        prob: Probabilitas risiko dari model (0-1)
-        user_inputs: Dictionary input original dari form (untuk display names)
-        api_key: API key untuk Gemini (jika None, ambil dari session state)
-    
-    Returns:
-        String berisi analysis report, atau None jika gagal
-    """
+    """Generate AI Analysis Report menggunakan Gemini API."""
     
     # Ambil API key dari argument atau session state
     if api_key is None:
@@ -212,18 +180,7 @@ def get_cached_or_generate_report(
     user_inputs: dict,
     force_regenerate: bool = False
 ) -> Optional[str]:
-    """
-    Ambil analysis report dari cache, atau generate jika belum ada.
-    
-    Args:
-        input_data: Dictionary hasil preprocessing
-        prob: Probabilitas risiko
-        user_inputs: Dictionary input original
-        force_regenerate: Force regenerate meskipun sudah ada di cache
-    
-    Returns:
-        String berisi analysis report, atau None jika gagal
-    """
+    """Ambil analysis report dari cache, atau generate jika belum ada."""
     
     # Create cache key
     cache_key = create_analysis_cache_key(input_data, prob)
@@ -247,13 +204,7 @@ def get_cached_or_generate_report(
 
 
 def display_analysis_report(report: str, container=None) -> None:
-    """
-    Display analysis report dalam format yang menarik.
-    
-    Args:
-        report: String berisi analysis report dari Gemini
-        container: Streamlit container untuk menampilkan (default: main)
-    """
+    """Display analysis report dalam format yang menarik."""
     
     if container is None:
         container = st

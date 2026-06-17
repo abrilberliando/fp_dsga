@@ -1,6 +1,6 @@
 """
 Halaman: Dashboard Awal
-========================
+
 Overview statistik utama, EDA, dan ringkasan model XGBoost
 untuk sistem prediksi spoilage perishable goods.
 
@@ -16,8 +16,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PATH
+# path configuration
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DATA_PATH = os.path.join(
@@ -26,9 +25,7 @@ DATA_PATH = os.path.join(
     "perishable_goods_management.csv"
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TEMA WARNA  (selaras dengan app.py — green sidebar)
-# ─────────────────────────────────────────────────────────────────────────────
+# color theme configuration
 C = {
     "green"  : "#4caf50",
     "green2" : "#66bb6a",
@@ -45,9 +42,7 @@ C = {
     "muted"  : "#718096",
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CSS
-# ─────────────────────────────────────────────────────────────────────────────
+# custom css styling
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -145,14 +140,12 @@ html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
 """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# DATA LOADING
-# ─────────────────────────────────────────────────────────────────────────────
+# data loading
 @st.cache_data(show_spinner=False)
 def load_data():
     df = pd.read_csv(DATA_PATH, parse_dates=["transaction_date", "expiration_date"])
 
-    # Feature engineering (sama dengan train_model.py)
+    # feature engineering
     df["temp_risk_score"]      = df["storage_temp"] * df["temp_deviation"]
     df["quality_handling"]     = df["handling_score"] * df["packaging_score"]
     df["price_ratio"]          = df["base_price"] / (df["cost_price"] + 1e-6)
@@ -166,9 +159,7 @@ def load_data():
     return df
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# FEATURE IMPORTANCE  (dari model .pkl asli)
-# ─────────────────────────────────────────────────────────────────────────────
+# feature importance loading
 @st.cache_resource(show_spinner=False)
 def load_fi():
     try:
@@ -183,9 +174,7 @@ def load_fi():
         return None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PLOTLY LAYOUT BASE
-# ─────────────────────────────────────────────────────────────────────────────
+# plotly layout base configuration
 PBASE = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
@@ -196,18 +185,14 @@ PBASE = dict(
 )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LOAD
-# ─────────────────────────────────────────────────────────────────────────────
+# load data
 with st.spinner("Memuat data…"):
     df = load_data()
 
 fi_df = load_fi()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# MAPPING — label tampilan (Indonesia) → nilai asli di dataset
-# ─────────────────────────────────────────────────────────────────────────────
+# category and region label mappings
 CAT_MAP = {
     "Bakery"         : "🍞 Roti & Kue",
     "Beverages"      : "🥤 Minuman",
@@ -229,17 +214,15 @@ REG_MAP = {
     "West"     : " Jawa Barat & DKI Jakarta",
 }
 
-# Reverse map: label Indonesia → nilai asli
+# reverse mappings
 CAT_REV = {v: k for k, v in CAT_MAP.items()}
 REG_REV = {v: k for k, v in REG_MAP.items()}
 
-# Label Indonesia untuk setiap nilai unik di data
+# label options for filters
 cat_labels_all = sorted([CAT_MAP.get(c, c) for c in df["category"].unique()])
 reg_labels_all = sorted([REG_MAP.get(r, r) for r in df["region"].unique()])
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SIDEBAR FILTERS
-# ─────────────────────────────────────────────────────────────────────────────
+# sidebar filters
 with st.sidebar:
     st.markdown("---")
     st.markdown("##### 🔍 Filter Dashboard")
@@ -263,7 +246,7 @@ with st.sidebar:
         key="db_grade",
     )
 
-# Konversi label Indonesia kembali ke nilai asli untuk filter data
+# convert label back to original values for filtering
 sel_cat = [CAT_REV.get(l, l) for l in sel_cat_label]
 sel_reg = [REG_REV.get(l, l) for l in sel_reg_label]
 
@@ -274,7 +257,7 @@ mask = (
 )
 dff = df[mask].copy()
 
-# Tambahkan kolom label Indonesia untuk keperluan chart
+# add indonesian label columns for charts
 dff["kategori_id"] = dff["category"].map(CAT_MAP)
 dff["wilayah_id"]  = dff["region"].map(REG_MAP)
 
@@ -283,9 +266,7 @@ if dff.empty:
     st.stop()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── HEADER ───────────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# page header
 st.markdown("""
 <div style="border-left:4px solid #4caf50; padding-left:16px; margin-bottom:4px;">
     <h1 style="margin:0; font-size:28px; font-weight:800;">🏠 Dashboard Awal</h1>
@@ -295,7 +276,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Badge pills
+# badge pills
 total_rec = len(dff)
 spoil_pct = dff["was_spoiled"].mean() * 100
 st.markdown(f"""
@@ -311,9 +292,7 @@ st.markdown(f"""
 st.divider()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 1: KPI CARDS ─────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# kpi statistics
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -347,7 +326,7 @@ kpi(k1, "kpi-green",  "📦", "Total Produk",
 
 kpi(k2, "kpi-red",    "🦠", "Spoilage Rate",
     f"{spoilage_rate:.1f}%",
-    f"⚠️ {spoiled_n:,} produk busuk" if spoilage_rate > 20 else f"✅ {spoiled_n:,} busuk",
+    f"{spoiled_n:,} produk busuk",
     "dn" if spoilage_rate > 20 else "up")
 
 kpi(k3, "kpi-orange", "💸", "Total Waste Cost",
@@ -360,7 +339,7 @@ kpi(k4, "kpi-blue",   "🗑️", "Unit Terbuang",
 
 kpi(k5, "kpi-purple", "🚨", "Kritis ≤2 Hari",
     f"{critical_items:,}",
-    "⚠️ Butuh tindakan segera" if critical_items > 500 else "✅ Terkendali",
+    "Butuh tindakan segera" if critical_items > 500 else "Terkendali",
     "dn" if critical_items > 500 else "up")
 
 kpi(k6, "kpi-teal",   "📈", "Avg Profit Margin",
@@ -370,9 +349,7 @@ kpi(k6, "kpi-teal",   "📈", "Avg Profit Margin",
 st.markdown("<br>", unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 2: TREN + DISTRIBUSI ─────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# trend and distribution charts
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -445,9 +422,7 @@ with col_pie:
     st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 3: SPOILAGE PER KATEGORI & REGION ────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# category and region analysis
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -519,9 +494,7 @@ with col_reg:
     st.plotly_chart(fig_hm, use_container_width=True, config={"displayModeBar": False})
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 4: EDA FITUR ─────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# feature analysis
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -616,9 +589,7 @@ with tab_corr:
     st.plotly_chart(fig_corr, use_container_width=True, config={"displayModeBar": False})
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 5: FEATURE IMPORTANCE ────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# feature importance visualization
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -695,7 +666,7 @@ if fi_df is not None:
 
         st.markdown(f"""
         <div class="ibox orange" style="margin-top:.8rem;">
-            💡 <b style="color:{C['orange']}">Key Insight:</b><br>
+            <b style="color:{C['orange']}">Key Insight:</b><br>
             <b>temp_abuse_events</b> adalah fitur paling dominan (19.6%).
             Monitoring suhu real-time dan pengurangan kejadian abuse suhu
             adalah prioritas utama untuk menekan spoilage.
@@ -706,9 +677,7 @@ else:
     st.info("ℹ️ File model tidak ditemukan. Jalankan `train_model.py` terlebih dahulu.")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 6: MODEL OVERVIEW ────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# model configuration and pipeline
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -782,9 +751,7 @@ with hp_col:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 7: WASTE COST ANALYSIS ───────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# waste cost analysis
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -810,7 +777,7 @@ with wc1:
     st.plotly_chart(fig_wc, use_container_width=True, config={"displayModeBar": False})
 
 with wc2:
-    # Scatter: waste_pct vs profit_margin
+    # scatter: waste_pct vs profit_margin
     fig_wc2 = px.scatter(
         dff.sample(min(4000, len(dff)), random_state=1),
         x="waste_pct", y="profit_margin_pct",
@@ -828,9 +795,7 @@ with wc2:
     st.plotly_chart(fig_wc2, use_container_width=True, config={"displayModeBar": False})
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 8: QUICK NAVIGATION ──────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# quick navigation to other pages
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -860,6 +825,6 @@ st.markdown(f"""
 <div style="text-align:center; font-size:.72rem; color:{C['muted']}; line-height:1.8;">
     🌱 <b>Food Waste Recommendation System</b> &nbsp;·&nbsp;
     Dataset: Kaggle — Managing Perishable Inventory (100K records) &nbsp;·&nbsp;
-    Model: XGBoost v2.x · SMOTE · Universitas Pancasila · fp_dsga
+    Model: XGBoost v2.x · SMOTE · Kelompok 3 DSGA · fp_dsga
 </div>
 """, unsafe_allow_html=True)

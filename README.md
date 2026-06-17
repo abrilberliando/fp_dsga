@@ -1,6 +1,21 @@
 # ♻️ Food Waste Recommendation System
 
-Aplikasi Streamlit multipage untuk prediksi dan rekomendasi pengelolaan food waste.
+Sistem prediksi dan rekomendasi AI untuk pengelolaan food waste di retail. Mengintegrasikan XGBoost untuk prediksi risiko pembusukan dan Google Gemini AI untuk rekomendasi operasional.
+
+---
+
+## 🎯 Fitur Utama
+
+### Untuk Retail Manager (Mode Operasional)
+- **Prediksi Risiko**: Input data produk dan dapatkan probabilitas risiko pembusukan real-time
+- **AI Analysis Report**: Rekomendasi mendalam dari Gemini AI dengan 7 section insight
+- **Chat Assistant**: Tanya jawab kontekstual dengan AI untuk keputusan operasional
+
+### Untuk Stakeholder Teknis (Mode Analitik)
+- **Dashboard & Data Exploration**: Statistik 100K records, trend analysis, distribusi kategori & region
+- **Performa Model ML**: Evaluasi metrics, confusion matrix, ROC curve, feature importance
+- **Gemini Documentation**: API configuration, system prompt, workflow architecture
+- Akses penuh ke semua fitur Retail Manager
 
 ---
 
@@ -8,179 +23,370 @@ Aplikasi Streamlit multipage untuk prediksi dan rekomendasi pengelolaan food was
 
 ```
 food_waste_app/
-├── app.py                    ← Entry point & konfigurasi navigasi
+├── app.py                       ← Entry point, role-based navigation
 │
 ├── pages/
-│   ├── dashboard_awal.py     ← 🏠 Dashboard & overview statistik
-│   ├── prediksi.py           ← 🔮 Form prediksi & hasil rekomendasi + AI Analysis
-│   ├── deskripsi_model.py    ← 📖 Dokumentasi & evaluasi model
-│   ├── ai_gemini_model.py    ← 🤖 Gemini API configuration & testing
-│   └── chatbot_model.py      ← 💬 Chatbot interaktif
-│
-├── assets/
-│   └── logo.png              ← Logo aplikasi (letakkan di sini)
+│   ├── dashboard_awal.py        ← Dashboard statistik & visualisasi data
+│   ├── prediksi.py              ← Form prediksi + AI Analysis Report
+│   ├── deskripsi_model.py       ← Dokumentasi & evaluasi model ML
+│   └── ai_gemini_model.py       ← Chat Assistant dengan konteks prediksi
 │
 ├── utils/
-│   ├── __init__.py
-│   ├── helpers.py            ← Helper functions & reusable components
-│   ├── predictor.py          ← ML model loading & prediction logic
-│   ├── gemini_analyzer.py    ← 🔑 Google Gemini API integration untuk AI Analysis
-│   └── chatbot.py            ← Integrasi LLM untuk chatbot
+│   ├── theme.py                 ← CSS global, color palette, Plotly config
+│   ├── helpers.py               ← Utility functions & UI components
+│   ├── predictor.py             ← Model loading & prediction logic
+│   └── gemini_analyzer.py       ← Gemini API integration untuk AI reports
 │
 ├── models/
-│   ├── __init__.py           
-│   ├── xgboost_model.pkl     ← Trained XGBoost model
-│   ├── label_encoders.pkl    ← Feature encoders
-│   └── feature_names.pkl     ← Feature names list
+│   ├── xgboost_model.pkl        ← Trained XGBoost model (SMOTE balanced)
+│   ├── label_encoders.pkl       ← Encoders untuk categorical features
+│   ├── feature_names.pkl        ← Feature names dari training
+│   ├── metrics.json             ← Model performance metrics
+│   ├── confusion_matrix.pkl     ← Confusion matrix untuk evaluation
+│   ├── roc_data.pkl             ← ROC curve data (FPR, TPR, AUC)
+│   ├── classification_report.json ← Detailed classification metrics
+│   └── model_comparison.json    ← XGBoost vs CatBoost comparison
 │
-├── requirements.txt
-└── README.md
+├── data/
+│   └── perishable_goods_management.csv  ← Dataset (100K records)
+│
+├── notebooks/
+│   └── XGBoost_CatBoost_Perishable_Goods.ipynb  ← EDA & training notebook
+│
+├── docs/
+│   ├── skenario.md              ← Original requirements document
+│   └── AI_ANALYSIS_REPORT.md    ← AI feature design documentation
+│
+├── train_model.py               ← Training script XGBoost + SMOTE
+├── train_comparison.py          ← Comparison script XGBoost vs CatBoost
+├── requirements.txt             ← Python dependencies
+└── README.md                    ← Dokumentasi lengkap
 ```
 
 ---
 
-## 🚀 Cara Menjalankan
+## 🚀 Setup & Instalasi
 
-### 1. Install dependencies
+### 1. Clone atau Extract Project
+```bash
+cd food_waste_app/
+```
+
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Jalankan aplikasi
+### 3. Jalankan Aplikasi
 ```bash
 streamlit run app.py
 ```
 
-### 3. Buka di browser
+### 4. Buka Browser
 ```
 http://localhost:8501
 ```
 
----
-
-## 🗺️ Navigasi Sidebar & Fitur
-
-| Menu             | Halaman               | Deskripsi                              |
-|------------------|-----------------------|----------------------------------------|
-| 🏠 Dashboard Awal | `dashboard_awal.py`   | Statistik utama & visualisasi data    |
-| 🔮 Prediksi       | `prediksi.py`         | Form input & hasil prediksi ML + **🤖 AI Analysis Report** |
-| 🤖 AI Model Description | `ai_gemini_model.py` | Setup & testing Gemini API |
-| 📖 ML Model Description | `deskripsi_model.py` | Arsitektur, performa & metadata model |
-| 💬 Chatbot Model  | `chatbot_model.py`    | Tanya jawab interaktif dengan LLM     |
-
-### Fitur Utama per Halaman
-
-**Prediksi (🔮)**
-- Input data produk (kategori, kualitas, kondisi penyimpanan, stok, harga)
-- ML prediction dengan XGBoost
-- Business analysis (profit, loss potential, diskon rekomendasi)
-- Feature importance visualization
-- **🔑 NEW: AI Analysis Report** - Analisis mendalam berbasis Gemini AI
+### 5. Setup Gemini API Key
+Untuk mengaktifkan AI Analysis & Chat features:
+1. Dapatkan API key dari [Google AI Studio](https://ai.google.dev)
+2. Di sidebar aplikasi, masukkan key di field "Gemini API Key"
+3. Klik tombol "Test Connection" di halaman AI Assistant untuk verifikasi
+4. Fitur AI akan otomatis aktif setelah key tervalidasi
 
 ---
 
-## 🔑 Konfigurasi Gemini API (AI Analysis Report)
+## 👥 Role-Based Access
 
-Aplikasi menggunakan **Google Gemini AI** untuk menganalisis hasil prediksi dan memberikan rekomendasi operasional yang actionable.
+Aplikasi mendukung 2 role pengguna yang dapat dipilih di sidebar:
 
-### Setup Gemini API
+### 🛒 Retail Manager (Mode Operasional)
 
-#### 1. Dapatkan API Key
-1. Kunjungi [Google AI Studio](https://ai.google.dev)
-2. Klik **"Get API Key"** 
-3. Pilih atau buat project baru
-4. Copy API key yang dihasilkan
+**Target User**: Manager toko, staff operasional, decision maker harian
 
-#### 2. Input API Key di Aplikasi
-1. Jalankan aplikasi: `streamlit run app.py`
-2. Buka sidebar di sebelah kiri
-3. Masukkan API key di field **"🔑 API Key"**
-4. Sistem akan menampilkan ✓ jika valid
+**Halaman yang Tersedia:**
 
-#### 3. Gunakan Fitur AI Analysis Report
-1. Buka halaman **🔮 Prediksi**
-2. Isi form data produk (4 section)
-3. Klik **"🔍 Cek Risiko Pembusukan Dari Seluruh Data"**
-4. Setelah hasil prediksi muncul, scroll ke bawah
-5. Klik **"📄 Generate AI Analysis Report"**
-6. Tunggu AI menganalisis (~ 30-60 detik)
-7. Hasil ditampilkan dalam card hijau dengan 7 section analisis
+**1. Prediksi Risiko** (`prediksi.py`)
+- Form input data produk: kategori, kondisi storage, stok, harga, supplier
+- Real-time prediction: probabilitas risiko pembusukan (0-100%)
+- Risk categorization: AMAN, WASPADA, BAHAYA, KRITIS
+- Rekomendasi tindakan berdasarkan risk level
+- Estimasi kerugian potensial & strategi diskon otomatis
+- Feature importance visualization untuk produk spesifik
+- **AI Analysis Report**: 7 section mendalam dari Gemini AI
+  - Ringkasan kondisi produk
+  - Analisis risiko
+  - Faktor yang berpengaruh
+  - Rekomendasi tindakan (urgent, medium, long-term)
+  - Strategi penjualan & diskon
+  - Saran pengelolaan inventaris
+  - Kesimpulan & prioritas
 
-### Fitur AI Analysis Report
-
-**Output mencakup:**
-1. **Ringkasan Kondisi Produk** - Status produk saat ini
-2. **Analisis Risiko** - Penjelasan probabilitas risk dari model
-3. **Faktor yang Berpengaruh** - Top factors yang paling material
-4. **Rekomendasi Tindakan** - Action items prioritas (urgent, medium, long-term)
-5. **Strategi Penjualan** - Diskon optimal & timing penjualan
-6. **Saran Pengelolaan Inventaris** - Display, monitoring, koordinasi
-7. **Kesimpulan** - Executive summary & prioritas manager
-
-**Karakteristik:**
-- ✅ Menggunakan model **Gemini 2.5 Flash** untuk response cepat
-- ✅ Prompt dinamis berdasarkan data aktual produk
-- ✅ Tidak hardcode field names atau struktur data
-- ✅ **Smart caching** - Tidak request ulang untuk data yang sama
-- ✅ Bahasa Indonesia profesional & actionable
-- ✅ Fokus pada impact finansial & operational efficiency
-
-### Caching & Performance
-
-- Hasil analisis di-cache secara otomatis
-- Cache key berdasarkan: kategori, stok, hari kadaluarsa, suhu, probabilitas
-- Refresh manual dengan tombol 🔄 (force regenerate)
-- Session cache (hilang saat halaman di-refresh)
+**2. AI Assistant** (`ai_gemini_model.py`)
+- Chat dengan Gemini AI tentang produk & inventory management
+- Context-aware: otomatis gunakan data dari prediksi terakhir
+- Suggested questions berdasarkan risk level
+- Rekomendasi operasional real-time
+- API configuration & connection testing
 
 ---
 
-## ⚙️ Pengembangan Lanjutan
+### 🔬 Stakeholder Teknis (Mode Analitik)
 
-### Menambahkan Model ML
-1. Simpan file model ke folder `models/` (contoh: `models/xgboost_model.pkl`)
-2. Buat `models/model_config.json` berisi metadata model
-3. Gunakan `load_model()` dari `utils/helpers.py`
-4. Implementasikan logika prediksi di `pages/prediksi.py`
+**Target User**: Data scientist, ML engineer, technical stakeholder, management
 
-### Mengaktifkan Chatbot
-1. Pilih provider LLM (OpenAI / Gemini / lainnya)
-2. Tambahkan API key ke `.streamlit/secrets.toml`:
-   ```toml
-   OPENAI_API_KEY = "sk-..."
-   ```
-3. Implementasikan `get_chat_response()` di `utils/chatbot.py`
+**Halaman Tambahan:**
 
-### Customize AI Analysis Prompt
-Edit file `utils/gemini_analyzer.py`:
-- Fungsi `get_system_prompt()` - Ubah system instruction
-- Fungsi `build_analysis_prompt()` - Ubah format atau section output
-- Fungsi `generate_analysis_report()` - Ubah model atau parameters API
+**1. Dashboard & Data** (`dashboard_awal.py`)
+- **Overview Statistics**: 100K records, 42 features, class distribution
+- **KPI Cards**: Spoilage rate, waste cost, profit margin, demand forecast
+- **Trend Analysis**: Monthly spoilage trends dengan smoothing
+- **Distribusi Kategori**: Bar chart dengan spoilage percentage
+- **Distribusi Region**: Geographic analysis
+- **Category × Region Heatmap**: Spoilage rate breakdown
+- **EDA Features**: Boxplot, scatter, correlation heatmap
+- **Feature Importance**: Top 15 features dari model
 
-### Menambahkan Logo
-1. Letakkan file `logo.png` di folder `assets/`
-2. Logo akan otomatis tampil di bagian atas sidebar
+**2. Performa Model** (`deskripsi_model.py`)
+- **Overview**: Model architecture, dataset info, training pipeline
+- **Performance Metrics**: Accuracy, Precision, Recall, F1, AUC
+- **Model Comparison**: XGBoost vs CatBoost side-by-side
+- **Evaluation Curves**: Confusion matrix, ROC curve dengan Plotly
+- **Classification Report**: Per-class metrics detail
+- **Feature Analysis**: Top 10 feature importance + full ranking
+- **Metadata**: Model files status, parameters, training info
+- Link ke Jupyter notebook untuk deep dive
+
+**3. Gemini Documentation** (`ai_gemini_model.py` - full access)
+- Gemini model information & capabilities
+- API configuration & live connection testing
+- System prompt documentation
+- AI workflow architecture & data flow
+- Plus Chat Assistant feature
+
+**4. Plus**: Semua fitur Retail Manager (Prediksi + AI Assistant)
 
 ---
 
-## 📦 Requirements Utama
+## 🤖 AI Analysis Report (Gemini Integration)
 
+### Apa itu AI Analysis Report?
+Fitur yang mengintegrasikan hasil prediksi ML dengan Google Gemini AI untuk menghasilkan rekomendasi operasional yang actionable dan context-aware.
+
+### Cara Kerja
+1. User mengisi form prediksi produk di halaman **Prediksi Risiko**
+2. Model XGBoost menghitung probabilitas risiko pembusukan
+3. User klik tombol **"Generate AI Analysis Report"**
+4. Data produk & hasil prediksi dikirim ke Gemini API dengan prompt terstruktur
+5. Gemini AI menganalisis dan menghasilkan 7 section rekomendasi:
+   - **Ringkasan Kondisi Produk**: Overview status & prognosis
+   - **Analisis Risiko**: Interpretasi probabilitas & kategori risiko
+   - **Faktor yang Berpengaruh**: Top 3-5 faktor kritis dari feature importance
+   - **Rekomendasi Tindakan**: Aksi konkret berdasarkan urgency (immediate, short-term, long-term)
+   - **Strategi Penjualan & Diskon**: Pricing recommendations dengan justifikasi bisnis
+   - **Saran Pengelolaan Inventaris**: Inventory actions (reorder, clearance, promotion)
+   - **Kesimpulan & Prioritas**: Executive summary & next steps
+
+### Features
+- **Smart Caching**: Hasil di-cache berdasarkan kombinasi data produk (menghindari duplicate API calls)
+- **Dynamic Prompt**: Prompt disesuaikan dengan data aktual & feature importance
+- **Context-Aware**: Menggunakan probabilitas model & feature contribution
+- **Bahasa Indonesia**: Output profesional, praktis, dan actionable
+- **Force Regenerate**: Tombol "Regenerate Report" untuk analisis ulang
+
+### Model & Configuration
+- **Model**: Gemini 2.5 Flash (latest generation)
+- **Temperature**: 0.7 (balance between creativity & consistency)
+- **Max Tokens**: 2048
+- **Language**: Bahasa Indonesia
+- **Provider**: Google AI (generativeai SDK)
+
+### API Key Setup
+1. Buka [Google AI Studio](https://ai.google.dev)
+2. Klik "Get API Key" atau "Create API Key"
+3. Copy API key yang muncul
+4. Paste di sidebar aplikasi → field "Gemini API Key"
+5. Test koneksi di halaman AI Assistant
+
+---
+
+## 🧠 Model Machine Learning
+
+### XGBoost Binary Classification
+
+**Objective**: Prediksi apakah produk akan membusuk sebelum terjual (`was_spoiled`: 0/1)
+
+### Dataset
+- **Source**: `data/perishable_goods_management.csv`
+- **Size**: 100,000 records (simulasi data retail perishable goods)
+- **Features**: 42 kolom mencakup:
+  - Product attributes: kategori, quality score, packaging
+  - Storage conditions: temperature, humidity, handling score
+  - Supply chain: supplier score, location, transportation
+  - Demand & sales: daily demand, units sold, markdown applied
+  - Financial: base price, cost price, profit margin
+- **Target**: `was_spoiled` (binary: 0=tidak busuk, 1=busuk)
+- **Class Balance**: Imbalanced data, ditangani dengan **SMOTE** oversampling
+
+### Jupyter Notebook
+Exploratory Data Analysis (EDA) dan training process tersedia di:
+```
+notebooks/XGBoost_CatBoost_Perishable_Goods.ipynb
+```
+
+Notebook mencakup:
+- Data loading & exploration
+- Feature engineering & preprocessing
+- SMOTE balancing
+- XGBoost & CatBoost training
+- Model comparison & evaluation
+- Feature importance analysis
+- Hyperparameter tuning experiments
+
+---
+
+## 📦 Requirements & Dependencies
+
+### Core Dependencies
 - **Python** >= 3.9
-- **Streamlit** >= 1.36.0 (diperlukan untuk `st.navigation` API)
-- **XGBoost** >= 2.0.0 (model ML)
-- **Google Generative AI** >= 0.4.0 (untuk Gemini Analysis)
-- Lihat `requirements.txt` untuk daftar lengkap
+- **Streamlit** >= 1.36.0 (required untuk `st.navigation` API & role-based routing)
+- **XGBoost** >= 2.0.0 (ML model)
+- **scikit-learn** >= 1.3.0 (preprocessing, metrics, SMOTE)
+- **pandas** >= 2.0.0 (data manipulation)
+- **numpy** >= 1.24.0 (numerical operations)
 
-### Optional Dependencies
-- **Plotly** - Interactive visualizations
-- **Seaborn & Matplotlib** - Static plots
-- **SHAP** - Model explainability
+### AI/LLM
+- **google-generativeai** >= 0.4.0 (Gemini API integration)
+
+### Visualization
+- **plotly** >= 5.17.0 (interactive charts)
+- **matplotlib** >= 3.7.0 (static plots)
+- **seaborn** >= 0.12.0 (statistical visualization)
+
+### Optional
+- **imbalanced-learn** (SMOTE implementation)
+- **joblib** (model persistence)
+
+### Full Requirements
+Lihat `requirements.txt` untuk daftar lengkap dengan versi pinned.
+
+**Install semua dependencies**:
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
-## 🏗️ Teknologi
+## 🏗️ Tech Stack
 
-- **Frontend**: Streamlit
-- **Backend/ML**: scikit-learn, pandas, numpy, XGBoost
-- **Visualisasi**: Plotly, Matplotlib, Seaborn
-- **AI/LLM**: Google Gemini API (`google-generativeai`)
-- **Model Explainability**: SHAP
+- **Frontend/UI**: Streamlit (Python web framework)
+- **ML Framework**: XGBoost, scikit-learn
+- **Data Processing**: pandas, numpy
+- **Visualization**: Plotly (interactive), Matplotlib/Seaborn (static)
+- **AI/LLM**: Google Gemini API (generative AI)
+- **Imbalanced Learning**: SMOTE (imblearn)
+- **Model Persistence**: joblib, pickle
+
+---
+
+## � Penggunaan
+
+### Workflow Typical User (Retail Manager)
+
+1. **Login & Role Selection**
+   - Pilih role "Retail Manager" di sidebar
+
+2. **Input Data Produk**
+   - Buka halaman "Prediksi Risiko"
+   - Isi form: kategori produk, kondisi storage, stok, harga, supplier info
+
+3. **Prediksi Risiko**
+   - Klik "Prediksi Risiko Pembusukan"
+   - Review hasil: probabilitas (0-100%), kategori risiko (AMAN/WASPADA/BAHAYA/KRITIS)
+   - Lihat rekomendasi tindakan & estimasi kerugian
+
+4. **Generate AI Analysis**
+   - Klik "Generate AI Analysis Report"
+   - Review 7 section analisis dari Gemini AI
+   - Implementasikan rekomendasi tindakan
+
+5. **Chat Assistant (Opsional)**
+   - Buka halaman "AI Assistant"
+   - Tanyakan pertanyaan follow-up tentang produk
+   - Context otomatis menggunakan data dari prediksi terakhir
+
+### Workflow Typical User (Stakeholder Teknis)
+
+1. **Exploratory Analysis**
+   - Buka "Dashboard & Data"
+   - Review KPI, trend, distribusi, dan feature importance
+
+2. **Model Evaluation**
+   - Buka "Performa Model"
+   - Review metrics, confusion matrix, ROC curve
+   - Compare XGBoost vs CatBoost performance
+
+3. **Deep Dive (Opsional)**
+   - Buka Jupyter notebook untuk EDA detail
+   - Review training process & hyperparameter tuning
+
+4. **Gemini Integration Review**
+   - Buka "AI Assistant" → tabs documentation
+   - Review system prompt, API config, workflow architecture
+
+---
+
+## 🔧 Troubleshooting
+
+### Model Files Tidak Ditemukan
+```
+Error: File 'models/xgboost_model.pkl' not found
+```
+**Solusi**: Jalankan `python train_model.py` untuk generate model files
+
+### API Key Gemini Tidak Valid
+```
+Error: Invalid API key
+```
+**Solusi**: 
+- Verifikasi API key dari [Google AI Studio](https://ai.google.dev)
+- Pastikan tidak ada spasi atau karakter hidden
+- Test koneksi di halaman "AI Assistant" → tab "API Configuration"
+
+### Import Error XGBoost/CatBoost
+```
+Error: No module named 'xgboost'
+```
+**Solusi Windows**:
+```bash
+pip install --upgrade pip setuptools wheel
+pip install xgboost catboost --no-cache-dir
+```
+
+### Streamlit Navigation Error
+```
+Error: 'st.navigation' not found
+```
+**Solusi**: Upgrade Streamlit ke >= 1.36.0
+```bash
+pip install --upgrade streamlit>=1.36.0
+```
+
+---
+
+## 📄 License
+
+Project ini dibuat untuk keperluan edukasi dan research. Silakan gunakan dengan bijak dan sesuai kebutuhan.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Dataset**: Simulated perishable goods management data (100K records)
+- **ML Framework**: XGBoost team
+- **AI Integration**: Google Gemini AI
+- **UI Framework**: Streamlit team
+
+---
+
+**Dibuat dengan ❤️ untuk mengurangi food waste di industri retail**

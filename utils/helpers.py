@@ -1,19 +1,13 @@
 """
-utils/helpers.py
-=================
 Fungsi-fungsi helper umum yang dapat digunakan di semua halaman.
-
-Berisi:
-- Fungsi formatting data
-- Custom Streamlit components
-- Helper untuk loading model/data
+Berisi formatting data, custom components, dan helper untuk loading model/data.
 """
 
 import streamlit as st
 import os
 
 
-# ─── Konstanta Warna Tema ─────────────────────────────────────────────────────
+# Konstanta Warna Tema
 COLORS = {
     "primary":   "#4caf50",
     "secondary": "#2196f3",
@@ -25,7 +19,7 @@ COLORS = {
 }
 
 
-# ─── Helper: Placeholder Card ────────────────────────────────────────────────
+# Helper: Placeholder Card
 def placeholder_card(
     icon: str,
     title: str,
@@ -58,7 +52,7 @@ def placeholder_card(
     )
 
 
-# ─── Helper: Status Badge ────────────────────────────────────────────────────
+# Helper: Status Badge
 def status_badge(label: str, status: str = "warning") -> str:
     """Menghasilkan HTML badge status."""
     colors = {
@@ -76,19 +70,10 @@ def status_badge(label: str, status: str = "warning") -> str:
     )
 
 
-# ─── Helper: Load Model (Stub) ───────────────────────────────────────────────
+# Helper: Load Model (Stub)
 @st.cache_resource
 def load_model(model_path: str):
-    """
-    Memuat model dari path yang diberikan.
-    Implementasikan sesuai framework yang digunakan (sklearn, tensorflow, dll).
-
-    Args:
-        model_path: Path ke file model (.pkl, .h5, .pt, dll)
-
-    Returns:
-        Model object atau None jika file tidak ditemukan
-    """
+    """Memuat model dari path yang diberikan. Implementasikan sesuai framework yang digunakan."""
     if not os.path.exists(model_path):
         st.warning(
             f"⚠️ File model tidak ditemukan: `{model_path}`",
@@ -96,25 +81,17 @@ def load_model(model_path: str):
         )
         return None
 
-    # TODO: Implementasi sesuai framework
-    # Contoh sklearn:
-    # import joblib
-    # return joblib.load(model_path)
-
-    # Contoh tensorflow:
-    # import tensorflow as tf
-    # return tf.keras.models.load_model(model_path)
-
+    # Stub: Implementasi disesuaikan dengan framework (sklearn, tensorflow, dll)
     return None
 
 
-# ─── Helper: Format Angka ────────────────────────────────────────────────────
+# Helper: Format Angka
 def format_number(value: float, decimal: int = 2) -> str:
     """Format angka dengan pemisah ribuan dan desimal."""
     return f"{value:,.{decimal}f}"
 
 
-# ─── Helper: Section Header ──────────────────────────────────────────────────
+# Helper: Section Header
 def section_header(title: str, subtitle: str = "", color: str = "#4caf50") -> None:
     """Menampilkan header seksi yang konsisten."""
     st.markdown(
