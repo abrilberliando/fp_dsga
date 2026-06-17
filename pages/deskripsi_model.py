@@ -8,94 +8,236 @@ TODO (Tahap berikutnya):
 - Penjelasan SHAP / explainability 
 """
 
+import os
 import streamlit as st
+import pandas as pd
+import numpy as np
 import json
 import joblib
-import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from sklearn.metrics import ConfusionMatrixDisplay
-import os
 
-# ─── Load Data ─────────────────────────────────────────
-METRICS_PATH = "models/metrics.json"
-CM_PATH = "models/confusion_matrix.pkl"
-MODEL_PATH = "models/xgboost_model.pkl"
-FEATURE_PATH = "models/feature_names.pkl"
-REPORT_PATH = "models/classification_report.json"
-report = {}
-COMPARISON_PATH = "models/model_comparison.json"
-comparison = {}
+# ─────────────────────────────────────────────────────────────
+# PATH
+# ─────────────────────────────────────────────────────────────
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODELS_DIR = BASE_DIR / "models"
 
+METRICS_PATH = MODELS_DIR / "metrics.json"
+CM_PATH = MODELS_DIR / "confusion_matrix.pkl"
+MODEL_PATH = MODELS_DIR / "xgboost_model.pkl"
+FEATURE_PATH = MODELS_DIR / "feature_names.pkl"
+REPORT_PATH = MODELS_DIR / "classification_report.json"
+COMPARISON_PATH = MODELS_DIR / "model_comparison.json"
+ROC_PATH = MODELS_DIR / "roc_data.pkl"
+
+# ─────────────────────────────────────────────────────────────
+# WARNA (sama seperti Dashboard Awal)
+# ─────────────────────────────────────────────────────────────
+C = {
+    "green": "#4caf50",
+    "green2": "#66bb6a",
+    "teal": "#26a69a",
+    "blue": "#2196f3",
+    "orange": "#ff9800",
+    "red": "#f44336",
+    "purple": "#9c27b0",
+    "yellow": "#ffc107",
+    "bg": "#0e1117",
+    "card": "#1a1f2e",
+    "border": "#2d3748",
+    "text": "#e2e8f0",
+    "muted": "#718096",
+}
+
+# ─────────────────────────────────────────────────────────────
+# CSS
+# ─────────────────────────────────────────────────────────────
+st.markdown(f"""
+<style>
+
+.kpi-wrap {{
+    background: {C['card']};
+    border: 1px solid {C['border']};
+    border-radius: 14px;
+    padding: 1.2rem;
+    position: relative;
+}}
+
+.kpi-wrap::after {{
+    content: '';
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    height:3px;
+    border-radius:14px 14px 0 0;
+}}
+
+.kpi-green::after {{
+background:linear-gradient(90deg,{C['green']},{C['teal']});
+}}
+
+.kpi-blue::after {{
+background:linear-gradient(90deg,{C['blue']},{C['purple']});
+}}
+
+.kpi-orange::after {{
+background:linear-gradient(90deg,{C['orange']},{C['yellow']});
+}}
+
+.kpi-red::after {{
+background:linear-gradient(90deg,{C['red']},{C['orange']});
+}}
+
+.kpi-icon {{
+font-size:1.7rem;
+}}
+
+.kpi-lbl {{
+font-size:.7rem;
+color:{C['muted']};
+text-transform:uppercase;
+letter-spacing:.1em;
+font-weight:600;
+}}
+
+.kpi-val {{
+font-size:1.8rem;
+font-weight:800;
+color:{C['text']};
+}}
+
+.sec-hdr {{
+display:flex;
+align-items:center;
+gap:.6rem;
+padding:.5rem 0;
+border-bottom:1px solid {C['border']};
+margin:1.5rem 0 1rem;
+}}
+
+.sec-dot {{
+width:9px;
+height:9px;
+border-radius:50%;
+background:linear-gradient(135deg,{C['green']},{C['teal']});
+}}
+
+.sec-hdr h3 {{
+margin:0;
+color:{C['text']};
+}}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────
+# PLOTLY BASE
+# ─────────────────────────────────────────────────────────────
+PBASE = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(
+        color=C["muted"],
+        size=11
+    ),
+    margin=dict(
+        t=42,
+        b=36,
+        l=36,
+        r=16
+    ),
+)
+
+# ─────────────────────────────────────────────────────────────
+# LOAD
+# ─────────────────────────────────────────────────────────────
 metrics = {}
 cm = None
 model = None
 features = []
+report = {}
+comparison = {}
+roc_data = {}
 
-if os.path.exists(METRICS_PATH):
+if METRICS_PATH.exists():
     with open(METRICS_PATH) as f:
         metrics = json.load(f)
 
-if os.path.exists(CM_PATH):
+if CM_PATH.exists():
     cm = joblib.load(CM_PATH)
 
-if os.path.exists(MODEL_PATH):
+if MODEL_PATH.exists():
     model = joblib.load(MODEL_PATH)
 
-if os.path.exists(FEATURE_PATH):
+if FEATURE_PATH.exists():
     features = joblib.load(FEATURE_PATH)
 
-if os.path.exists(REPORT_PATH):
+if REPORT_PATH.exists():
     with open(REPORT_PATH) as f:
         report = json.load(f)
-if os.path.exists(COMPARISON_PATH):
+
+if COMPARISON_PATH.exists():
     with open(COMPARISON_PATH) as f:
         comparison = json.load(f)
 
+if ROC_PATH.exists():
+    roc_data = joblib.load(ROC_PATH)
+
 # ─── HEADER ─────────────────────────────────────────
 st.markdown("""
-<div style="
-text-align:center;
-padding:25px;
-border-radius:18px;
-background: linear-gradient(135deg,#2e7d32,#66bb6a);
-color:white;
-box-shadow:0px 4px 15px rgba(0,0,0,0.15);
-">
-
-<h1 style="
-margin-bottom:5px;
-font-size:42px;
-">
-🥬 Deskripsi Model
+<div style="border-left:4px solid #4caf50;
+padding-left:16px;
+margin-bottom:8px;">
+<h1 style="margin:0;font-size:28px;font-weight:800;">
+📖 Deskripsi Model
 </h1>
 
-<p style="
-font-size:18px;
-opacity:0.95;
-margin-bottom:15px;
-">
-Food Waste Prediction System using XGBoost
+<p style="margin:4px 0 0 0;
+opacity:.55;
+font-size:13px;">
+Arsitektur, performa, feature importance, dan metadata model XGBoost
 </p>
 
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div style="margin-bottom:1rem;">
+
 <span style="
-background:white;
-color:#2e7d32;
-padding:8px 16px;
+padding:6px 14px;
 border-radius:20px;
-font-weight:bold;
-margin-right:8px;
-">
+background:rgba(76,175,80,.15);
+color:#4caf50;
+font-size:.75rem;
+font-weight:700;">
 🌳 XGBoost
 </span>
 
 <span style="
-background:white;
-color:#2e7d32;
-padding:8px 16px;
+padding:6px 14px;
 border-radius:20px;
-font-weight:bold;
-">
+background:rgba(255,152,0,.15);
+color:#ff9800;
+font-size:.75rem;
+font-weight:700;">
+⚖️ SMOTE
+</span>
+
+<span style="
+padding:6px 14px;
+border-radius:20px;
+background:rgba(33,150,243,.15);
+color:#2196f3;
+font-size:.75rem;
+font-weight:700;">
 🥬 Food Waste Prediction
 </span>
 
@@ -111,219 +253,272 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🔑 Fitur",
     "📋 Metadata"
 ])
-# ─── Tabs 1 Overview ─────────────────────────────────────────
 # ─── TAB 1 : OVERVIEW ─────────────────────────
 with tab1:
 
+    # ==============================
+    # HEADER
+    # ==============================
     st.markdown("""
-    <div style="padding:10px 0;">
-        <h1 style="margin-bottom:0;">🥬 Food Waste Prediction System</h1>
-        <p style="color:gray;">
-            Machine Learning Based Perishable Goods Management
-        </p>
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>🧩 Overview Model</h3>
     </div>
     """, unsafe_allow_html=True)
 
-    st.divider()
+    # ==============================
+    # KPI CARD
+    # ==============================
+    c1, c2, c3, c4 = st.columns(4)
 
-    # ==========================================
-    # TOP SECTION
-    # ==========================================
-    col1, col2 = st.columns([1, 1.3], gap="large")
+    def info_card(col, color_cls, icon, label, value, sub):
+        with col:
+            st.markdown(f"""
+            <div class="kpi-wrap {color_cls}">
+                <span class="kpi-icon">{icon}</span>
+                <div class="kpi-lbl">{label}</div>
+                <div class="kpi-val">{value}</div>
+                <div class="kpi-sub neu">{sub}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # ─── LEFT : MODEL INFO ────────────────────
+    info_card(
+        c1,
+        "kpi-green",
+        "🌳",
+        "MODEL",
+        "XGBoost",
+        "Classifier utama"
+    )
+
+    info_card(
+        c2,
+        "kpi-blue",
+        "🎯",
+        "TARGET",
+        "was_spoiled",
+        "Binary classification"
+    )
+
+    info_card(
+        c3,
+        "kpi-orange",
+        "⚖️",
+        "BALANCING",
+        "SMOTE",
+        "Imbalanced handling"
+    )
+
+    info_card(
+        c4,
+        "kpi-purple",
+        "📦",
+        "FEATURES",
+        str(len(features)),
+        "Total feature"
+    )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ==================================================
+    # MODEL INFO + DATASET
+    # ==================================================
+    col1, col2 = st.columns([1,1])
+
     with col1:
 
-        st.markdown("## 🧠 Model Information")
-
         st.markdown("""
-        <div style="
-        background: linear-gradient(135deg,#2e7d32,#66bb6a);
-        padding:20px;
-        border-radius:12px;
-        color:white;
-        ">
-
-        <h3>🌳 XGBoost Classifier</h3>
-
-        <hr style="opacity:0.3;">
-
-        <ul>
-        <li>🎯 Prediction Target : was_spoiled</li>
-        <li>📊 Task Type : Binary Classification</li>
-        <li>🌳 Main Model : XGBoost Classifier</li>
-        <li>⚖️ Data Balancing : SMOTE</li>
-        <li>🥬 Domain : Food Waste Prediction</li>
-        </ul>
-
+        <div class="sec-hdr">
+            <div class="sec-dot"></div>
+            <h3>🧠 Model Information</h3>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("### 🎯 Project Objective")
+        st.markdown(f"""
+        <div class="ibox green">
+        <b>🌳 XGBoost Classifier</b><br><br>
 
-        st.info("""
-        Sistem ini digunakan untuk memprediksi kemungkinan
-        produk mengalami pembusukan sebelum terjual.
+        🎯 Target : <b>was_spoiled</b><br>
+        📊 Task : Binary Classification<br>
+        ⚖️ Data Balancing : SMOTE<br>
+        🥬 Domain : Food Waste Prediction<br>
+        📦 Total Feature : {len(features)}
+        </div>
+        """, unsafe_allow_html=True)
 
-        Prediksi dilakukan berdasarkan kondisi penyimpanan,
-        umur simpan produk, kualitas barang, tingkat
-        persediaan, serta faktor permintaan pasar.
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        Tujuan utama sistem adalah membantu mengurangi
-        food waste dan meningkatkan efisiensi manajemen
-        inventori produk perishable.
-        """)
+        st.markdown("""
+        <div class="ibox blue">
+        <b>🎯 Project Objective</b><br><br>
 
-    # ─── RIGHT : DATASET OVERVIEW ─────────────
+        Sistem ini digunakan untuk memprediksi kemungkinan produk mengalami pembusukan sebelum terjual.
+
+        Prediksi dilakukan berdasarkan kondisi penyimpanan, umur simpan produk, kualitas barang, tingkat persediaan, serta faktor permintaan pasar.
+
+        Tujuan utama sistem adalah membantu mengurangi food waste dan meningkatkan efisiensi manajemen inventori produk perishable.
+        </div>
+        """, unsafe_allow_html=True)
+
     with col2:
 
-        st.markdown("## 📊 Dataset Overview")
+        st.markdown("""
+        <div class="sec-hdr">
+            <div class="sec-dot"></div>
+            <h3>📊 Dataset Overview</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.success("""
-        **Managing Perishable Inventory Dataset**
+        st.markdown("""
+        <div class="ibox orange">
+        <b>Managing Perishable Inventory Dataset</b><br><br>
 
-        Dataset berisi data simulasi pengelolaan inventori
-        produk mudah rusak (perishable goods).
+        Dataset berisi data simulasi pengelolaan inventori produk mudah rusak (perishable goods).
 
-        Data digunakan untuk memprediksi apakah suatu
-        produk berpotensi mengalami pembusukan sebelum
-        terjual berdasarkan kondisi penyimpanan dan
-        karakteristik produk.
-        """)
+        Data digunakan untuk memprediksi apakah suatu produk berpotensi mengalami pembusukan sebelum terjual berdasarkan kondisi penyimpanan dan karakteristik produk.
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
 
         d1, d2 = st.columns(2)
 
-        d1.metric("🎯 Target", "was_spoiled")
-        d2.metric("🤖 Model", "XGBoost")
+        with d1:
+            st.metric("🎯 Target", "was_spoiled")
 
-        st.markdown("### 📌 Data Characteristics")
+        with d2:
+            st.metric("🤖 Model", "XGBoost")
 
-        st.markdown("""
-        - 🌡️ Storage Temperature
-        - 📅 Days Until Expiry
-        - 📦 Inventory Level
-        - 📈 Demand Forecast
-        - ⭐ Product Quality Score
-        - 🚚 Supply Chain Status
-        - 🏪 Store Location
-        - ⚠️ Spoilage Risk
-        """)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-        st.markdown("### ⚙️ Training Pipeline")
-
-        st.code("""
-Dataset
-   ↓
-Data Cleaning
-   ↓
-Encoding
-   ↓
-SMOTE
-   ↓
-Train-Test Split
-   ↓
-XGBoost Training
-   ↓
-Model Evaluation
-   ↓
-Prediction
-        """)
-
-    st.divider()
-
-    # ==========================================
+    # ==================================================
     # IMPORTANT FEATURES
-    # ==========================================
-    st.markdown("## 📦 Important Features")
-
-    c1, c2, c3, c4 = st.columns(4)
-
-    c1.info("🌡️ Storage Temperature")
-    c2.info("📅 Days Until Expiry")
-    c3.info("📦 Inventory Level")
-    c4.info("📈 Demand Forecast")
-
-    c5, c6, c7, c8 = st.columns(4)
-
-    c5.info("⭐ Product Quality")
-    c6.info("🚚 Supply Chain Status")
-    c7.info("🏪 Store Location")
-    c8.info("⚠️ Spoilage Risk")
-
-    st.divider()
-
-    # ==========================================
-    # WORKFLOW
-    # ==========================================
-    st.markdown("## 🔄 Prediction Workflow")
-
+    # ==================================================
     st.markdown("""
-    <div style="
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    justify-content:center;
-    align-items:center;
-    ">
-
-    <div style="background:#e8f5e9;padding:12px;border-radius:10px;">
-    📂 Dataset
-    </div>
-
-    <div>➡️</div>
-
-    <div style="background:#e3f2fd;padding:12px;border-radius:10px;">
-    🧹 Preprocessing
-    </div>
-
-    <div>➡️</div>
-
-    <div style="background:#ede7f6;padding:12px;border-radius:10px;">
-    ⚙️ Encoding
-    </div>
-
-    <div>➡️</div>
-
-    <div style="background:#fff3e0;padding:12px;border-radius:10px;">
-    ⚖️ SMOTE
-    </div>
-
-    <div>➡️</div>
-
-    <div style="background:#f3e5f5;padding:12px;border-radius:10px;">
-    🌳 XGBoost
-    </div>
-
-    <div>➡️</div>
-
-    <div style="background:#e0f7fa;padding:12px;border-radius:10px;">
-    📊 Evaluation
-    </div>
-
-    <div>➡️</div>
-
-    <div style="background:#fce4ec;padding:12px;border-radius:10px;">
-    🔮 Prediction
-    </div>
-
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>🔑 Important Features</h3>
     </div>
     """, unsafe_allow_html=True)
+
+    col1,col2,col3,col4 = st.columns(4)
+
+    with col1:
+        st.info("🌡️ Storage Temperature")
+        st.info("⭐ Product Quality")
+
+    with col2:
+        st.info("📅 Days Until Expiry")
+        st.info("🚚 Supply Chain Status")
+
+    with col3:
+        st.info("📦 Inventory Level")
+        st.info("🏪 Store Location")
+
+    with col4:
+        st.info("📈 Demand Forecast")
+        st.info("⚠️ Spoilage Risk")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ==================================================
+    # TRAINING PIPELINE
+    # ==================================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>⚙️ Training Pipeline</h3>
+    </div>
+    """, unsafe_allow_html=True)
+
+    steps = [
+        ("📂", "Dataset"),
+        ("🧹", "Cleaning"),
+        ("⚙️", "Encoding"),
+        ("⚖️", "SMOTE"),
+        ("🌳", "XGBoost"),
+        ("📊", "Evaluation"),
+        ("🔮", "Prediction")
+    ]
+
+    cols = st.columns(len(steps))
+
+    for col, (icon, label) in zip(cols, steps):
+        with col:
+            st.markdown(f"""
+            <div class="kpi-wrap kpi-green"
+            style="text-align:center;padding:1rem;height:90px;">
+                <div style="font-size:25px">{icon}</div>
+                <div style="font-size:.8rem;font-weight:600;margin-top:10px;">
+                    {label}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 # ─── TAB 2: PERFORMA ─────────────────────────
 with tab2:
-    st.subheader("📈 Model Performance")
 
-    # ── METRICS CARDS ─────────────────────────
+    # ==================================================
+    # HEADER
+    # ==================================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>📈 Model Performance</h3>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ==================================================
+    # KPI CARDS
+    # ==================================================
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric("Accuracy", f"{metrics.get('accuracy',0)*100:.2f}%")
-    c2.metric("Precision", f"{metrics.get('precision',0)*100:.2f}%")
-    c3.metric("Recall", f"{metrics.get('recall',0)*100:.2f}%")
-    c4.metric("F1 Score", f"{metrics.get('f1',0)*100:.2f}%")
+    info_card(
+        c1,
+        "kpi-green",
+        "🎯",
+        "ACCURACY",
+        f"{metrics.get('accuracy',0)*100:.2f}%",
+        "Overall Performance"
+    )
 
-    st.divider()
+    info_card(
+        c2,
+        "kpi-blue",
+        "📌",
+        "PRECISION",
+        f"{metrics.get('precision',0)*100:.2f}%",
+        "Positive Prediction"
+    )
 
-    # ── GRAFIK SEMUA METRICS ─────────────────────────
-    st.subheader("📊 Perbandingan Semua Metrics")
+    info_card(
+        c3,
+        "kpi-orange",
+        "🔍",
+        "RECALL",
+        f"{metrics.get('recall',0)*100:.2f}%",
+        "Detection Rate"
+    )
+
+    info_card(
+        c4,
+        "kpi-purple",
+        "⚡",
+        "F1 SCORE",
+        f"{metrics.get('f1',0)*100:.2f}%",
+        "Balanced Metric"
+    )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ==================================================
+    # PERFORMANCE METRICS
+    # ==================================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>📊 Performance Metrics</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     import pandas as pd
 
@@ -337,12 +532,43 @@ with tab2:
         ]
     })
 
-    st.bar_chart(df_all.set_index("Metric"))
+    fig_metric = go.Figure()
 
-    st.divider()
+    fig_metric.add_bar(
+        x=df_all["Metric"],
+        y=df_all["Value"],
+        marker_color=[
+            C["green"],
+            C["blue"],
+            C["orange"],
+            C["purple"]
+        ],
+        text=[f"{x:.3f}" for x in df_all["Value"]],
+        textposition="outside"
+    )
 
-# ── GRAFIK INTERAKTIF (DROPDOWN) ─────────────────────────
-    st.subheader("🎯 Perbandingan Model (XGBoost vs CatBoost)")
+    fig_metric.update_layout(
+        **PBASE,
+        title="Performance Metrics",
+        yaxis_title="Score",
+        height=350
+    )
+
+    st.plotly_chart(
+        fig_metric,
+        use_container_width=True,
+        config={"displayModeBar": False}
+    )
+
+    # ==================================================
+    # MODEL COMPARISON
+    # ==================================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>🎯 XGBoost vs CatBoost</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     metric_mapping = {
         "Accuracy": "accuracy",
@@ -367,7 +593,7 @@ with tab2:
         name="XGBoost",
         x=["XGBoost"],
         y=[xgb_value],
-        marker_color="#7B1FA2",
+        marker_color=C["green"],
         text=[f"{xgb_value:.4f}"],
         textposition="outside"
     )
@@ -376,42 +602,45 @@ with tab2:
         name="CatBoost",
         x=["CatBoost"],
         y=[cat_value],
-        marker_color="#FF9800",
+        marker_color=C["orange"],
         text=[f"{cat_value:.4f}"],
         textposition="outside"
     )
 
     fig.update_layout(
+        **PBASE,
         title=f"{selected_metric} Comparison",
         yaxis_title=selected_metric,
-        height=500,
-        hovermode="x",
+        height=450,
         showlegend=False
     )
 
     st.plotly_chart(
         fig,
         use_container_width=True,
-        config={
-            "displaylogo": False,
-            "toImageButtonOptions": {
-                "format": "png"
-            }
-        }
+        config={"displayModeBar": False}
     )
 
-    # ── CONFUSION MATRIX + ROC ─────────────────────────
+    # ==================================================
+    # CONFUSION MATRIX + ROC CURVE
+    # ==================================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>🎯 Evaluation Curves</h3>
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
 
-    # CONFUSION MATRIX
-    # ===================================================
+    # ---------- CONFUSION MATRIX ----------
     with col1:
 
-        st.subheader("🎯 Confusion Matrix")
+        st.subheader("Confusion Matrix")
 
         if cm is not None:
 
-            fig, ax = plt.subplots(figsize=(7, 6))
+            fig_cm, ax = plt.subplots(figsize=(6,5))
 
             disp = ConfusionMatrixDisplay(
                 confusion_matrix=cm,
@@ -424,26 +653,15 @@ with tab2:
                 values_format="d"
             )
 
-            ax.set_title(
-                "Confusion Matrix",
-                fontsize=14,
-                pad=15
-            )
-
-            plt.tight_layout()
-
-            st.pyplot(fig)
+            st.pyplot(fig_cm)
 
         else:
             st.warning("Confusion matrix belum tersedia")
 
-
-    # ===================================================
-    # ROC CURVE
-    # ===================================================
+    # ---------- ROC CURVE ----------
     with col2:
 
-        st.subheader("📉 ROC Curve")
+        st.subheader("ROC Curve")
 
         ROC_PATH = "models/roc_data.pkl"
 
@@ -454,7 +672,7 @@ with tab2:
             fpr = roc_data.get("fpr", [])
             tpr = roc_data.get("tpr", [])
 
-            fig, ax = plt.subplots(figsize=(7, 6))
+            fig_roc, ax = plt.subplots(figsize=(6,5))
 
             ax.plot(
                 fpr,
@@ -464,54 +682,56 @@ with tab2:
             )
 
             ax.plot(
-                [0, 1],
-                [0, 1],
+                [0,1],
+                [0,1],
                 linestyle="--",
-                color="red",
-                label="Random Guess"
-            )
-
-            ax.set_xlabel("False Positive Rate")
-            ax.set_ylabel("True Positive Rate")
-
-            ax.set_title(
-                "ROC Curve",
-                fontsize=14,
-                pad=15
+                color="red"
             )
 
             ax.legend()
 
-            plt.tight_layout()
-
-            st.pyplot(fig)
+            st.pyplot(fig_roc)
 
         else:
             st.info("ROC belum tersedia")
 
-    st.divider()
-
-    # ── CLASSIFICATION REPORT ─────────────────────────
-    st.subheader("📋 Classification Report")
+    # ==================================================
+    # CLASSIFICATION REPORT
+    # ==================================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>📋 Classification Report</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     try:
-        if isinstance(report, dict) and len(report) > 0:
-            df_report = pd.DataFrame(report).transpose()
 
-            # rapihin angka
+        if isinstance(report, dict) and len(report) > 0:
+
+            df_report = pd.DataFrame(report).transpose()
             df_report = df_report.round(3)
 
-            st.dataframe(df_report, use_container_width=True)
+            st.dataframe(
+                df_report,
+                use_container_width=True
+            )
+
         else:
-            st.warning("Classification report kosong / belum ada")
+            st.warning("Classification report kosong")
 
     except Exception as e:
-        st.error(f"Gagal load report: {e}")
 
+        st.error(f"Gagal load report : {e}")
 # ─── TAB 3: FITUR ─────────────────────────
 with tab3:
 
-    st.subheader("🔑 Feature Analysis")
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>🔑 Feature Analysis</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     if model is not None and len(features) > 0:
 
@@ -525,54 +745,87 @@ with tab3:
             ascending=False
         )
 
-        # ===============================
-        # TOP CARDS
-        # ===============================
+        # ====================================
+        # KPI
+        # ====================================
         c1, c2, c3 = st.columns(3)
 
-        c1.metric(
-            "Total Features",
-            len(features)
+        info_card(
+            c1,
+            "kpi-green",
+            "📦",
+            "TOTAL FEATURES",
+            str(len(features)),
+            "Feature model"
         )
 
-        c2.metric(
-            "Most Important",
-            df_imp.iloc[0]["Feature"]
+        info_card(
+            c2,
+            "kpi-blue",
+            "🥇",
+            "TOP FEATURE",
+            df_imp.iloc[0]["Feature"],
+            "Most important"
         )
 
-        c3.metric(
-            "Importance Score",
-            f"{df_imp.iloc[0]['Importance']:.4f}"
+        info_card(
+            c3,
+            "kpi-orange",
+            "📈",
+            "IMPORTANCE",
+            f"{df_imp.iloc[0]['Importance']:.4f}",
+            "Highest score"
         )
 
-        st.divider()
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        # ===============================
-        # TOP 10 IMPORTANCE
-        # ===============================
-        st.subheader("📊 Top 10 Feature Importance")
+        # ====================================
+        # TOP 10 FEATURE IMPORTANCE
+        # ====================================
+        st.markdown("""
+        <div class="sec-hdr">
+            <div class="sec-dot"></div>
+            <h3>📊 Top 10 Feature Importance</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-        fig, ax = plt.subplots(figsize=(8,5))
-
-        top10 = df_imp.head(10)
-
-        ax.barh(
-            top10["Feature"][::-1],
-            top10["Importance"][::-1]
+        top10 = df_imp.head(10).sort_values(
+            by="Importance"
         )
 
-        ax.set_xlabel("Importance Score")
-        ax.set_ylabel("Feature")
-        ax.set_title("Top 10 Important Features")
+        fig = go.Figure()
 
-        st.pyplot(fig)
+        fig.add_bar(
+            x=top10["Importance"],
+            y=top10["Feature"],
+            orientation="h",
+            marker_color=C["green"],
+            text=[f"{v:.4f}" for v in top10["Importance"]],
+            textposition="outside"
+        )
 
-        st.divider()
+        fig.update_layout(
+            **PBASE,
+            title="Top 10 Important Features",
+            xaxis_title="Importance Score",
+            height=450
+        )
 
-        # ===============================
-        # FEATURE TABLE
-        # ===============================
-        st.subheader("📋 Full Feature Ranking")
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={"displayModeBar": False}
+        )
+
+        # ====================================
+        # TABLE
+        # ====================================
+        st.markdown("""
+        <div class="sec-hdr">
+            <div class="sec-dot"></div>
+            <h3>📋 Full Feature Ranking</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
         df_imp["Rank"] = range(
             1,
@@ -586,96 +839,148 @@ with tab3:
             use_container_width=True
         )
 
-        st.divider()
+        # ====================================
+        # INSIGHT
+        # ====================================
+        st.markdown("""
+        <div class="sec-hdr">
+            <div class="sec-dot"></div>
+            <h3>💡 Insight</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # ===============================
-        # FEATURE INSIGHT
-        # ===============================
-        st.subheader("💡 Insight")
+        st.markdown(f"""
+        <div class="ibox green">
+        <b>{df_imp.iloc[0]["Feature"]}</b>
+        merupakan feature paling berpengaruh terhadap prediksi spoilage dengan skor
+        <b>{df_imp.iloc[0]["Importance"]:.4f}</b>.
 
-        st.info(
-            f"""
-            Feature paling berpengaruh terhadap prediksi spoilage adalah
-            **{df_imp.iloc[0]['Feature']}**
-            dengan skor importance
-            **{df_imp.iloc[0]['Importance']:.4f}**.
-
-            Model lebih banyak mengambil keputusan berdasarkan kombinasi
-            feature-feature dengan importance tinggi.
-            """
-        )
+        Model mengambil keputusan berdasarkan kombinasi feature-feature dengan
+        importance tertinggi.
+        </div>
+        """, unsafe_allow_html=True)
 
     else:
         st.warning("Model atau feature belum tersedia")
-        # ─── TAB 4: METADATA ─────────────────────────
+# ─── TAB 4 : METADATA ─────────────────────────
 with tab4:
 
-    st.subheader("📋 Model Metadata")
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>📋 Model Metadata</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric(
-        "Model",
-        "XGBoost"
+    info_card(
+        c1,
+        "kpi-green",
+        "🌳",
+        "MODEL",
+        "XGBoost",
+        "Main algorithm"
     )
 
-    c2.metric(
-        "Task",
-        "Binary Class"
+    info_card(
+        c2,
+        "kpi-blue",
+        "🎯",
+        "TASK",
+        "Binary",
+        "Classification"
     )
 
-    c3.metric(
-        "Features",
-        len(features)
+    info_card(
+        c3,
+        "kpi-orange",
+        "📦",
+        "FEATURES",
+        str(len(features)),
+        "Total features"
     )
 
-    c4.metric(
+    info_card(
+        c4,
+        "kpi-purple",
+        "📈",
         "AUC",
-        f"{metrics.get('auc',0):.3f}"
+        f"{metrics.get('auc',0):.3f}",
+        "ROC performance"
     )
 
-    st.divider()
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # ===============================
+    # ===================================
     # MODEL INFORMATION
-    # ===============================
-    st.subheader("🧠 Model Information")
+    # ===================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>🧠 Model Information</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown(f"""
-| Property | Value |
-|-----------|--------|
-| Algorithm | XGBoost |
-| Problem Type | Binary Classification |
-| Target Variable | was_spoiled |
-| Total Features | {len(features)} |
-| Training Method | SMOTE + XGBoost |
-| Evaluation Metrics | Accuracy, Precision, Recall, F1, AUC |
-    """)
+    model_info = pd.DataFrame({
+        "Property":[
+            "Algorithm",
+            "Problem Type",
+            "Target Variable",
+            "Total Features",
+            "Training Method",
+            "Evaluation Metrics"
+        ],
+        "Value":[
+            "XGBoost",
+            "Binary Classification",
+            "was_spoiled",
+            len(features),
+            "SMOTE + XGBoost",
+            "Accuracy, Precision, Recall, F1, AUC"
+        ]
+    })
 
-    st.divider()
+    st.dataframe(
+        model_info,
+        use_container_width=True,
+        hide_index=True
+    )
 
-    # ===============================
-    # JSON VIEWER
-    # ===============================
-    st.subheader("⚙️ Raw Metrics JSON")
+    # ===================================
+    # RAW JSON
+    # ===================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>⚙️ Raw Metrics JSON</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.json(metrics)
 
-    st.divider()
+    # ===================================
+    # SUMMARY
+    # ===================================
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>📄 Model Summary</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ===============================
-    # MODEL SUMMARY
-    # ===============================
-    st.subheader("📄 Model Summary")
+    st.markdown(f"""
+    <div class="ibox green">
 
-    st.success(
-        f"""
-        Model XGBoost berhasil mencapai:
+    <b>🌳 XGBoost Performance</b>
 
-        • Accuracy : {metrics.get('accuracy',0)*100:.2f}%  
-        • Precision : {metrics.get('precision',0)*100:.2f}%  
-        • Recall : {metrics.get('recall',0)*100:.2f}%  
-        • F1 Score : {metrics.get('f1',0)*100:.2f}%  
-        • AUC : {metrics.get('auc',0):.3f}
-        """
-    )
+    <br><br>
+
+    🎯 Accuracy : {metrics.get('accuracy',0)*100:.2f}%<br>
+    📌 Precision : {metrics.get('precision',0)*100:.2f}%<br>
+    🔍 Recall : {metrics.get('recall',0)*100:.2f}%<br>
+    ⚡ F1 Score : {metrics.get('f1',0)*100:.2f}%<br>
+    📈 AUC : {metrics.get('auc',0):.3f}
+
+    </div>
+    """, unsafe_allow_html=True)
