@@ -3,14 +3,21 @@ import sys
 import io
 import glob
 import joblib
+import json
 import pandas as pd
 from tqdm import tqdm
 from sklearn.preprocessing import LabelEncoder
 from imblearn.over_sampling import SMOTE
+from sklearn.metrics import roc_curve
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import (accuracy_score, recall_score, f1_score, 
+roc_auc_score, precision_score, confusion_matrix, classification_report
+)
+from sklearn.metrics import classification_report
+
 import warnings
+
 
 # Fix for Windows console emoji printing
 if sys.stdout.encoding != 'utf-8':
@@ -136,11 +143,13 @@ def main():
         y_prob = xgb_model.predict_proba(X_test)[:, 1]
         
         acc = accuracy_score(y_test, y_pred)
+        prec = precision_score(y_test, y_pred)
         rec = recall_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred)
         auc = roc_auc_score(y_test, y_prob)
-        
+
         print("💾 Menyimpan model ke folder models/...")
+
         os.makedirs("models", exist_ok=True)
         print("📁 Folder 'models' dibuat otomatis.")
         
@@ -148,26 +157,53 @@ def main():
         joblib.dump(encoders, "models/label_encoders.pkl")
         joblib.dump(feature_names, "models/feature_names.pkl")
         
+         # METRICS
+        metrics = {
+            "accuracy": acc,
+            "precision": prec,
+            "recall": rec,
+            "f1": f1,
+            "auc": auc
+        }
+
+        with open("models/metrics.json", "w") as f:
+            json.dump(metrics, f)
+
+        # CONFUSION MATRIX
+        cm = confusion_matrix(y_test, y_pred)
+        joblib.dump(cm, "models/confusion_matrix.pkl")
+         # CLASSIFICATION REPORT
+        report = classification_report(y_test, y_pred, output_dict=True)
+        with open("models/classification_report.json", "w") as f:
+            json.dump(report, f)
+
+        fpr, tpr, _ = roc_curve(y_test, y_prob)
+
+        joblib.dump({
+            "fpr": fpr,
+            "tpr": tpr
+        }, "models/roc_data.pkl")
         print("✅ Selesai! Model siap digunakan.")
         print("👉 Sekarang jalankan: streamlit run app.py")
         
         summary = f"""
-  ╔══════════════════════════════════════╗
-  ║       ✅ TRAINING BERHASIL!          ║
-  ╠══════════════════════════════════════╣
-  ║  Model    : XGBoost                  ║
-  ║  Accuracy : {acc*100:5.1f}%                  ║
-  ║  Recall   : {rec*100:5.1f}%                  ║
-  ║  F1-Score : {f1*100:5.1f}%                  ║
-  ║  AUC-ROC  : {auc:.3f}                  ║
-  ╠══════════════════════════════════════╣
-  ║  File tersimpan di folder: models/   ║
-  ║                                      ║
-  ║  Langkah selanjutnya:                ║
-  ║  → streamlit run app.py              ║
-  ╚══════════════════════════════════════╝"""
+        ╔══════════════════════════════════════╗
+        ║       ✅ TRAINING BERHASIL!          ║
+        ╠══════════════════════════════════════╣
+        ║  Model    : XGBoost                  ║
+        ║  Accuracy : {acc*100:5.1f}%          ║
+        ║  Precision: {prec*100:5.1f}%         ║
+        ║  Recall   : {rec*100:5.1f}%          ║
+        ║  F1-Score : {f1*100:5.1f}%           ║
+        ║  AUC-ROC  : {auc:.3f}                ║
+        ╠══════════════════════════════════════╣
+        ║  File tersimpan di folder: models/   ║
+        ║                                      ║
+        ║  Langkah selanjutnya:                ║
+        ║  → streamlit run app.py              ║
+        ╚══════════════════════════════════════╝
+        """
         print(summary)
-        
     except MemoryError:
         print("❌ Memori tidak cukup. Coba tutup aplikasi lain lalu jalankan ulang script ini.")
     except Exception as e:
