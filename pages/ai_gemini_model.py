@@ -24,6 +24,94 @@ if "gemini_test_result" not in st.session_state:
 if "gemini_connection_status" not in st.session_state:
     st.session_state.gemini_connection_status = "Not Connected"
 
+# ─── TEMA WARNA & CSS (Selaras dengan Dashboard) ──────────────────────────────
+C = {
+    "green"  : "#4caf50",
+    "green2" : "#66bb6a",
+    "teal"   : "#26a69a",
+    "blue"   : "#2196f3",
+    "orange" : "#ff9800",
+    "red"    : "#f44336",
+    "purple" : "#9c27b0",
+    "yellow" : "#ffc107",
+    "bg"     : "#0e1117",
+    "card"   : "#1a1f2e",
+    "border" : "#2d3748",
+    "text"   : "#e2e8f0",
+    "muted"  : "#718096",
+}
+
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
+
+/* ── Cards ── */
+.kpi-wrap {{
+    background: {C['card']};
+    border: 1px solid {C['border']};
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem 1rem 1.4rem;
+    position: relative;
+    overflow: hidden;
+    transition: transform .18s ease, border-color .18s ease;
+    height: 100%;
+}}
+.kpi-wrap:hover {{
+    transform: translateY(-3px);
+    border-color: #4a5568;
+}}
+.kpi-wrap::after {{
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+}}
+.kpi-green::after  {{ background: linear-gradient(90deg,{C['green']},{C['teal']}); }}
+.kpi-blue::after   {{ background: linear-gradient(90deg,{C['blue']},#7c3aed); }}
+.kpi-orange::after {{ background: linear-gradient(90deg,{C['orange']},{C['yellow']}); }}
+.kpi-red::after    {{ background: linear-gradient(90deg,{C['red']},{C['orange']}); }}
+.kpi-purple::after {{ background: linear-gradient(90deg,{C['purple']},#ec4899); }}
+.kpi-teal::after   {{ background: linear-gradient(90deg,{C['teal']},{C['blue']}); }}
+
+.kpi-icon  {{ font-size:1.5rem; margin-bottom:.35rem; display:inline-block; }}
+.kpi-lbl   {{ font-size:.8rem; color:{C['text']}; font-weight:700; display:inline-block; margin-left:8px; }}
+.kpi-val   {{ font-size:1.2rem; font-weight:800; color:{C['text']}; font-family:'JetBrains Mono',monospace; margin-top:8px; }}
+.kpi-sub   {{ font-size:.75rem; margin-top:.4rem; font-weight:500; color:{C['muted']}; }}
+
+/* ── Section headers ── */
+.sec-hdr {{
+    display:flex; align-items:center; gap:.6rem;
+    padding:.5rem 0 .6rem 0;
+    border-bottom: 1px solid {C['border']};
+    margin: 1.8rem 0 1rem 0;
+}}
+.sec-hdr h3 {{ margin:0; font-size:1.1rem; font-weight:700; color:{C['text']}; }}
+.sec-dot {{
+    width:9px; height:9px; border-radius:50%; flex-shrink:0;
+    background: linear-gradient(135deg,{C['blue']},{C['purple']});
+}}
+
+/* ── Info boxes ── */
+.ibox {{
+    border-radius:10px; padding:.9rem 1.1rem;
+    font-size:.8rem; line-height:1.65; color:{C['muted']};
+}}
+.ibox.green {{ background:rgba(76,175,80,.07); border:1px solid rgba(76,175,80,.25); }}
+.ibox.orange{{ background:rgba(255,152,0,.07); border:1px solid rgba(255,152,0,.25); }}
+.ibox.blue  {{ background:rgba(33,150,243,.07); border:1px solid rgba(33,150,243,.25); }}
+.ibox.purple{{ background:rgba(156,39,176,.07); border:1px solid rgba(156,39,176,.25); }}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {{ width:5px; height:5px; }}
+::-webkit-scrollbar-track {{ background:{C['bg']}; }}
+::-webkit-scrollbar-thumb {{ background:#4a5568; border-radius:3px; }}
+</style>
+""", unsafe_allow_html=True)
+
+
 # ─── Helper Functions ─────────────────────────────────────────────────────────
 
 def test_gemini_connection():
@@ -62,7 +150,6 @@ def test_gemini_connection():
             "message": "❌ Koneksi Gagal",
             "details": f"Error: {str(e)}"
         }
-
 
 def get_system_prompt():
     """Return system prompt dokumentasi untuk Gemini."""
@@ -108,21 +195,28 @@ Aturan:
 * Prioritaskan informasi yang paling penting bagi manager toko.
 """
 
-
 def copy_to_clipboard(text: str):
     """Helper untuk copy text (display only, real copy di browser)."""
     st.code(text, language="text")
 
+def custom_card(icon, title, value, subtitle, color_cls):
+    """Membungkus konten menjadi card UI ala dashboard"""
+    return f"""
+    <div class="kpi-wrap {color_cls}">
+        <div><span class="kpi-icon">{icon}</span><span class="kpi-lbl">{title}</span></div>
+        <div class="kpi-val">{value}</div>
+        <div class="kpi-sub">{subtitle}</div>
+    </div>
+    """
+
 
 # ─── Page Title ───────────────────────────────────────────────────────────────
-st.markdown("""
-<div style="
-    text-align: center;
-    padding: 20px 10px;
-">
-    <div style="font-size: 48px;">🤖</div>
-    <h1 style="margin:8px 0 4px 0; font-size:32px;">AI Model & Gemini Assistant</h1>
-    <p style="margin:0; opacity:0.6; font-size:14px;">
+st.markdown(f"""
+<div style="border-left:4px solid {C['blue']}; padding-left:16px; margin-bottom:24px;">
+    <h1 style="margin:0; font-size:28px; font-weight:800; display:flex; align-items:center; gap:10px;">
+        🤖 AI Model & Gemini Assistant
+    </h1>
+    <p style="margin:4px 0 0 0; opacity:.55; font-size:13px;">
         Dokumentasi & Konfigurasi Gemini API untuk Food Waste Recommendation System
     </p>
 </div>
@@ -142,97 +236,95 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # TAB 1: GEMINI OVERVIEW
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
-    st.markdown("### Model Information & Capabilities")
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>Model Information & Capabilities</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Model Basic Info
+    # Model Basic Info (Menggunakan UI Card)
     col_model1, col_model2, col_model3 = st.columns(3)
     
     with col_model1:
-        with st.container(border=True):
-            st.markdown("#### 🎯 Model Name")
-            st.markdown("**Gemini 2.5 Flash**")
-            st.caption("Latest generation AI model by Google")
-    
+        st.markdown(custom_card("🎯", "Model Name", "Gemini 2.5 Flash", "Latest generation AI model by Google", "kpi-blue"), unsafe_allow_html=True)
     with col_model2:
-        with st.container(border=True):
-            st.markdown("#### 📦 Version")
-            st.markdown("**2.5 Flash**")
-            st.caption("Optimized for speed & cost")
-    
+        st.markdown(custom_card("📦", "Version", "2.5 Flash", "Optimized for speed & cost", "kpi-purple"), unsafe_allow_html=True)
     with col_model3:
-        with st.container(border=True):
-            st.markdown("#### 🌐 Provider")
-            st.markdown("**Google AI**")
-            st.caption("google.generativeai API")
+        st.markdown(custom_card("🌐", "Provider", "Google AI", "google.generativeai API", "kpi-teal"), unsafe_allow_html=True)
     
-    st.markdown("")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # Model Purpose
-    with st.container(border=True):
-        st.markdown("#### 🎯 Tujuan Penggunaan")
-        st.markdown("""
-Memberikan **rekomendasi operasional retail berdasarkan hasil prediksi model XGBoost**.
-
-Model Gemini diintegrasikan untuk:
-1. **Analisis Mendalam** - Menginterpretasi hasil prediksi risiko dari XGBoost
-2. **Rekomendasi Bisnis** - Membuat strategi actionable untuk manager retail
-3. **Konteks Tambahan** - Menambah konteks bisnis pada data teknis
-4. **Natural Language** - Menghasilkan rekomendasi dalam bahasa yang mudah dipahami
-        """)
+    st.markdown(f"""
+    <div class="kpi-wrap kpi-orange" style="padding: 1.5rem;">
+        <h4 style="margin-top:0; color:{C['text']}; font-weight:700;">🎯 Tujuan Penggunaan</h4>
+        <p style="color:{C['muted']}; font-size:0.9rem; line-height:1.6;">Memberikan <b>rekomendasi operasional retail berdasarkan hasil prediksi model XGBoost</b>.</p>
+        <p style="color:{C['muted']}; font-size:0.9rem; margin-bottom:0.5rem;">Model Gemini diintegrasikan untuk:</p>
+        <ul style="color:{C['muted']}; font-size:0.85rem; line-height:1.8;">
+            <li><b>Analisis Mendalam</b> - Menginterpretasi hasil prediksi risiko dari XGBoost</li>
+            <li><b>Rekomendasi Bisnis</b> - Membuat strategi actionable untuk manager retail</li>
+            <li><b>Konteks Tambahan</b> - Menambah konteks bisnis pada data teknis</li>
+            <li><b>Natural Language</b> - Menghasilkan rekomendasi dalam bahasa yang mudah dipahami</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.markdown("")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # Input & Output
     col_io1, col_io2 = st.columns(2)
     
     with col_io1:
-        with st.container(border=True):
-            st.markdown("#### 📥 Input yang Diterima")
-            inputs = [
-                "🏷️ Kategori Produk (e.g., Dairy, Buah)",
-                "📦 Jumlah Stok (unit)",
-                "📅 Sisa Hari Kadaluarsa (hari)",
-                "💰 Diskon Saat Ini (%)",
-                "⚠️ Probabilitas Risiko (0-100%)",
-                "🎯 Status Risiko (LOW/MEDIUM/HIGH/CRITICAL)"
-            ]
-            for inp in inputs:
-                st.write(f"• {inp}")
+        st.markdown(f"""
+        <div class="kpi-wrap kpi-blue">
+            <h4 style="margin-top:0; color:{C['text']}; font-weight:700;">📥 Input yang Diterima</h4>
+            <ul style="color:{C['muted']}; font-size:0.85rem; line-height:1.8; list-style-type:none; padding-left:0;">
+                <li>🏷️ Kategori Produk (e.g., Dairy, Buah)</li>
+                <li>📦 Jumlah Stok (unit)</li>
+                <li>📅 Sisa Hari Kadaluarsa (hari)</li>
+                <li>💰 Diskon Saat Ini (%)</li>
+                <li>⚠️ Probabilitas Risiko (0-100%)</li>
+                <li>🎯 Status Risiko (LOW/MEDIUM/HIGH/CRITICAL)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col_io2:
-        with st.container(border=True):
-            st.markdown("#### 📤 Output yang Dihasilkan")
-            outputs = [
-                "🔍 Analisis Risiko (detailed explanation)",
-                "💬 Main Factors (faktor utama risiko)",
-                "✅ Rekomendasi Aksi (actionable steps)",
-                "🏷️ Strategi Diskon (pricing recommendation)",
-                "📊 Saran Inventaris (inventory action)",
-                "📈 Faktor Tambahan (contributing factors)"
-            ]
-            for out in outputs:
-                st.write(f"• {out}")
+        st.markdown(f"""
+        <div class="kpi-wrap kpi-green">
+            <h4 style="margin-top:0; color:{C['text']}; font-weight:700;">📤 Output yang Dihasilkan</h4>
+            <ul style="color:{C['muted']}; font-size:0.85rem; line-height:1.8; list-style-type:none; padding-left:0;">
+                <li>🔍 Analisis Risiko (detailed explanation)</li>
+                <li>💬 Main Factors (faktor utama risiko)</li>
+                <li>✅ Rekomendasi Aksi (actionable steps)</li>
+                <li>🏷️ Strategi Diskon (pricing recommendation)</li>
+                <li>📊 Saran Inventaris (inventory action)</li>
+                <li>📈 Faktor Tambahan (contributing factors)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.markdown("")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # Key Features
-    st.markdown("#### ⚡ Key Features")
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>Key Features</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
     col_feat1, col_feat2, col_feat3 = st.columns(3)
     
     with col_feat1:
-        st.success("✅ JSON Response Parsing")
-        st.caption("Structured output dalam format JSON")
-    
+        st.markdown(f"""<div class="ibox green">✅ <b style="color:{C['green']}">JSON Response Parsing</b><br>Structured output dalam format JSON</div>""", unsafe_allow_html=True)
     with col_feat2:
-        st.info("⚡ Fast Response Time")
-        st.caption("~2-5 detik per request")
-    
+        st.markdown(f"""<div class="ibox blue">⚡ <b style="color:{C['blue']}">Fast Response Time</b><br>~2-5 detik per request</div>""", unsafe_allow_html=True)
     with col_feat3:
-        st.warning("💰 Cost-Effective")
-        st.caption("Flash model pricing terjangkau")
+        st.markdown(f"""<div class="ibox orange">💰 <b style="color:{C['orange']}">Cost-Effective</b><br>Flash model pricing terjangkau</div>""", unsafe_allow_html=True)
     
-    st.markdown("")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # Model Parameters
     with st.expander("📊 Model Parameters & Configuration", expanded=True):
@@ -252,27 +344,23 @@ Model Gemini diintegrasikan untuk:
 # TAB 2: API CONFIGURATION
 # ══════════════════════════════════════════════════════════════════════════════
 with tab2:
-    st.markdown("### Gemini API Setup & Configuration")
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>Gemini API Setup & Configuration</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # 1. API Key Info (Terpusat ke Sidebar)
-    with st.container(border=True):
-        col_api_info, col_api_status = st.columns([2, 1])
-        
-        with col_api_info:
-            st.markdown("#### 🔑 API Key Status")
-            st.info("💡 Pengaturan API Key sekarang dikelola secara terpusat melalui **Sidebar** di sebelah kiri layar untuk keamanan global.")
-            
-        with col_api_status:
-            st.markdown("<br>", unsafe_allow_html=True) # Spacer sejajar
-            if st.session_state.get("llm_api_key"):
-                st.success("✅ Key Terdeteksi di Sidebar")
-            else:
-                st.warning("⚠️ Key Belum Diisi di Sidebar")
-                
-    st.markdown("")
+    # 1. API Key Info
+    st.markdown(f"""
+    <div class="ibox blue" style="margin-bottom: 1.5rem;">
+        💡 <b style="color:{C['blue']}">Pengaturan API Key Terpusat:</b><br>
+        Pengaturan API Key sekarang dikelola secara terpusat melalui <b>Sidebar</b> di sebelah kiri layar untuk keamanan global seluruh sistem.
+    </div>
+    """, unsafe_allow_html=True)
     
     # 2. Test Connection Area (Fungsi Live Test)
-    st.markdown("#### 🧪 Live Verification Test")
+    st.markdown("<h4 style='font-size:1rem;'>🧪 Live Verification Test</h4>", unsafe_allow_html=True)
     with st.container(border=True):
         col_test_btn, col_test_status = st.columns([1, 2])
         
@@ -280,11 +368,9 @@ with tab2:
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🔗 Run Live Connection Test", type="primary", use_container_width=True):
                 with st.spinner("Menghubungkan ke server Google AI..."):
-                    # Memanggil fungsi test_gemini_connection yang ada di bagian atas file
                     result = test_gemini_connection()
                     st.session_state.gemini_test_result = result
                     
-                    # Update status global berdasarkan hasil test
                     if result["status"] == "SUCCESS":
                         st.session_state.gemini_connection_status = "Connected & Verified"
                     else:
@@ -302,39 +388,27 @@ with tab2:
             else:
                 st.caption("Silakan masukkan API Key di sidebar kiri terlebih dahulu, lalu klik tombol untuk menguji keaslian koneksi.")
                 
-    st.markdown("")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # 3. Dynamic Connection Status Cards
     col_status1, col_status2, col_status3 = st.columns(3)
     
     with col_status1:
-        with st.container(border=True):
-            st.markdown("#### 🌐 Connection Status")
-            status_now = st.session_state.gemini_connection_status
+        status_now = st.session_state.gemini_connection_status
+        if status_now == "Connected & Verified":
+            st.markdown(custom_card("🌐", "Connection", status_now, "API Key valid & aktif", "kpi-green"), unsafe_allow_html=True)
+        elif status_now == "Verification Failed":
+            st.markdown(custom_card("🌐", "Connection", status_now, "Koneksi ditolak server", "kpi-red"), unsafe_allow_html=True)
+        else:
+            st.markdown(custom_card("🌐", "Connection", status_now, "Koneksi belum diuji", "kpi-orange"), unsafe_allow_html=True)
             
-            if status_now == "Connected & Verified":
-                st.success(status_now)
-                st.caption("API Key valid & sukses terverifikasi")
-            elif status_now == "Verification Failed":
-                st.error(status_now)
-                st.caption("Koneksi ditolak server Google AI")
-            else:
-                st.warning("Not Connected")
-                st.caption("Koneksi belum diuji coba")
-                
     with col_status2:
-        with st.container(border=True):
-            st.markdown("#### 🤖 Active Model")
-            st.info("Gemini 2.5 Flash")
-            st.caption("Varian optimal untuk kecepatan & kuota")
-            
+        st.markdown(custom_card("🤖", "Active Model", "Gemini 2.5 Flash", "Optimal untuk kecepatan", "kpi-blue"), unsafe_allow_html=True)
+        
     with col_status3:
-        with st.container(border=True):
-            st.markdown("#### 📡 API Provider")
-            st.info("Google AI")
-            st.caption("google.generativeai SDK")
+        st.markdown(custom_card("📡", "API Provider", "Google AI", "google.generativeai SDK", "kpi-purple"), unsafe_allow_html=True)
             
-    st.markdown("")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # 4. Instructions Expander
     with st.expander("📖 How to Get Gemini API Key", expanded=False):
@@ -359,17 +433,22 @@ with tab2:
 # TAB 3: CUSTOM PROMPT (Documentation Mode)
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
-    st.markdown("### 📝 System Prompt Documentation")
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>System Prompt Documentation</h3>
+    </div>
+    """, unsafe_allow_html=True)
     st.caption("Prompt ini adalah instruksi inti yang mengatur bagaimana Gemini mengevaluasi prediksi dari model XGBoost. Halaman ini murni sebagai dokumentasi arsitektur AI (Read-Only).")
     
     st.markdown("")
     
     col_header, col_tip = st.columns([1, 1])
     with col_header:
-        st.markdown("#### 💾 Core Instruction Template")
+        st.markdown("<h4 style='font-size:1rem; margin:0;'>💾 Core Instruction Template</h4>", unsafe_allow_html=True)
     with col_tip:
-        st.markdown("""
-        <div style='text-align: right; margin-top: 5px; opacity: 0.8;'>
+        st.markdown(f"""
+        <div style='text-align: right; opacity: 0.8; color:{C['muted']};'>
             <small>💡 <b>Tip:</b> Arahkan kursor ke pojok kanan atas kotak kode untuk menyalin.</small>
         </div>
         """, unsafe_allow_html=True)
@@ -379,7 +458,6 @@ with tab3:
     
     st.markdown("")
     
-    # Tombol Download tetap dipertahankan untuk evaluator
     st.download_button(
         label="📥 Download Full Prompt Template (.txt)",
         data=get_system_prompt(),
@@ -388,29 +466,23 @@ with tab3:
         use_container_width=True
     )
 
-    st.markdown("---")
-    
-    # Prompt Breakdown (Tidak diubah, tetap dipertahankan)
-    with st.expander("🔍 Membedah Struktur Prompt", expanded=False):
-        st.markdown("""
-        ### Prompt Components:
-        **1. Role Definition:** Defines AI as "Senior Retail Operations AI Advisor"
-        **2. Task Description:** Clarity on input (product data + XGBoost predictions)
-        **3. Quality Criteria:** Actionable, Data-driven, Specific, Profitable
-        **4. Output Format Specification:** Struktur laporan 7 poin yang komprehensif.
-        """)
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4: AI WORKFLOW
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown("### 🏗️ System Architecture & Data Flow")
+    st.markdown("""
+    <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <h3>System Architecture & Data Flow</h3>
+    </div>
+    """, unsafe_allow_html=True)
     st.caption("Alur kerja sistem terintegrasi dari input pengguna, prediksi XGBoost, hingga analisis oleh Gemini.")
 
-    st.markdown("#### 🔄 Data Flow Pipeline")
+    st.markdown("<h4 style='font-size:1rem; margin-top:1.5rem;'>🔄 Data Flow Pipeline</h4>", unsafe_allow_html=True)
     
     with st.container(border=True):
-        st.markdown("""
-        <div style="text-align: center; padding: 20px;">
+        st.markdown(f"""
+        <div style="text-align: center; padding: 20px; background:{C['card']}; border-radius:10px;">
             <div style="
                 display: flex;
                 justify-content: space-around;
@@ -418,43 +490,44 @@ with tab4:
                 margin: 20px 0;
                 font-size: 14px;
                 font-weight: 600;
+                color: {C['text']};
             ">
                 <div style="flex: 1; text-align: center;">
                     <div style="font-size: 36px; margin-bottom: 8px;">📋</div>
                     <div>User Input</div>
-                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                    <div style="font-size: 11px; color: {C['muted']}; margin-top: 4px;">
                         Kategori, Stok,<br/>Kadaluarsa, Diskon
                     </div>
                 </div>
-                <div style="font-size: 24px; opacity: 0.5;">→</div>
+                <div style="font-size: 24px; color: {C['muted']};">→</div>
                 <div style="flex: 1; text-align: center;">
                     <div style="font-size: 36px; margin-bottom: 8px;">🤖</div>
                     <div>XGBoost Model</div>
-                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                    <div style="font-size: 11px; color: {C['muted']}; margin-top: 4px;">
                         ML Prediction<br/>Risk Score
                     </div>
                 </div>
-                <div style="font-size: 24px; opacity: 0.5;">→</div>
+                <div style="font-size: 24px; color: {C['muted']};">→</div>
                 <div style="flex: 1; text-align: center;">
                     <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
                     <div>Risk Analysis</div>
-                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                    <div style="font-size: 11px; color: {C['muted']}; margin-top: 4px;">
                         Probability &<br/>Risk Status
                     </div>
                 </div>
-                <div style="font-size: 24px; opacity: 0.5;">→</div>
+                <div style="font-size: 24px; color: {C['muted']};">→</div>
                 <div style="flex: 1; text-align: center;">
                     <div style="font-size: 36px; margin-bottom: 8px;">✨</div>
                     <div>Gemini LLM</div>
-                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                    <div style="font-size: 11px; color: {C['muted']}; margin-top: 4px;">
                         Natural Language<br/>Analysis
                     </div>
                 </div>
-                <div style="font-size: 24px; opacity: 0.5;">→</div>
+                <div style="font-size: 24px; color: {C['muted']};">→</div>
                 <div style="flex: 1; text-align: center;">
                     <div style="font-size: 36px; margin-bottom: 8px;">💼</div>
                     <div>Recommendation</div>
-                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">
+                    <div style="font-size: 11px; color: {C['muted']}; margin-top: 4px;">
                         Actionable<br/>Business Advice
                     </div>
                 </div>
@@ -464,25 +537,31 @@ with tab4:
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("#### 🏗️ System Architecture Layers")
+    st.markdown("<h4 style='font-size:1rem;'>🏗️ System Architecture Layers</h4>", unsafe_allow_html=True)
     col_arch1, col_arch2 = st.columns(2)
     
     with col_arch1:
-        with st.container(border=True):
-            st.markdown("##### 📊 Machine Learning Layer")
-            st.markdown("""
-            **Model**: XGBoost Regressor  
-            **Purpose**: Predict food waste risk  
-            **Inputs**: Product features, Storage conditions, Inventory metrics, Market factors  
-            **Outputs**: Risk Probability (0-100%), Risk Status, Confidence Score
-            """)
+        st.markdown(f"""
+        <div class="kpi-wrap kpi-blue" style="padding: 1.5rem;">
+            <h5 style="margin-top:0; color:{C['text']}; font-weight:700;">📊 Machine Learning Layer</h5>
+            <ul style="color:{C['muted']}; font-size:0.85rem; line-height:1.8; list-style-type:none; padding-left:0;">
+                <li><b style="color:{C['blue']}">Model:</b> XGBoost Regressor</li>
+                <li><b style="color:{C['blue']}">Purpose:</b> Predict food waste risk</li>
+                <li><b style="color:{C['blue']}">Inputs:</b> Product features, Storage conditions, Inventory metrics</li>
+                <li><b style="color:{C['blue']}">Outputs:</b> Risk Probability (0-100%), Risk Status</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col_arch2:
-        with st.container(border=True):
-            st.markdown("##### 🤖 LLM Layer (Gemini)")
-            st.markdown("""
-            **Model**: Gemini 2.5 Flash  
-            **Purpose**: Generate business recommendations  
-            **Inputs**: ML predictions, Product context, Business constraints  
-            **Outputs**: Risk narrative, Actionable recommendations, Discount strategies
-            """)
+        st.markdown(f"""
+        <div class="kpi-wrap kpi-purple" style="padding: 1.5rem;">
+            <h5 style="margin-top:0; color:{C['text']}; font-weight:700;">🤖 LLM Layer (Gemini)</h5>
+            <ul style="color:{C['muted']}; font-size:0.85rem; line-height:1.8; list-style-type:none; padding-left:0;">
+                <li><b style="color:{C['purple']}">Model:</b> Gemini 2.5 Flash</li>
+                <li><b style="color:{C['purple']}">Purpose:</b> Generate business recommendations</li>
+                <li><b style="color:{C['purple']}">Inputs:</b> ML predictions, Product context, Constraints</li>
+                <li><b style="color:{C['purple']}">Outputs:</b> Actionable recommendations, Discount strategies</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
