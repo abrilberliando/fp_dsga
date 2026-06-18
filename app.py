@@ -29,6 +29,52 @@ inject_css()
 #custom sidebar css 
 st.markdown(f"""
 <style>
+    /* ─── IMPORTANT: Hamburger Menu Fix ─────────────────────────── */
+    /* Ensure hamburger menu is always visible and accessible */
+    button[kind="header"] {{
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        top: 0.5rem !important;
+        left: 0.5rem !important;
+        z-index: 999999 !important;
+        background: {COLORS['card']} !important;
+        border: 1px solid {COLORS['border']} !important;
+        border-radius: 8px !important;
+        padding: 0.5rem !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        transition: all 0.2s ease !important;
+    }}
+    
+    button[kind="header"]:hover {{
+        background: {COLORS['green']} !important;
+        transform: scale(1.05) !important;
+    }}
+    
+    /* Show hamburger icon even when sidebar is collapsed */
+    .st-emotion-cache-1gulkj5 {{
+        display: block !important;
+    }}
+    
+    /* Ensure sidebar toggle is always accessible */
+    [data-testid="collapsedControl"] {{
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        background: {COLORS['card']} !important;
+        border: 1px solid {COLORS['green']} !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 0.7rem !important;
+        box-shadow: 0 2px 8px rgba(76,175,80,0.3) !important;
+    }}
+    
+    [data-testid="collapsedControl"]:hover {{
+        background: {COLORS['green']} !important;
+        border-color: {COLORS['green']} !important;
+        transform: translateX(2px) !important;
+    }}
+
     /* Sidebar Background */
     [data-testid="stSidebar"] {{
         background: linear-gradient(180deg, {COLORS['card']} 0%, #141822 50%, {COLORS['bg']} 100%);
@@ -395,6 +441,19 @@ else:
     }
 
 pg = st.navigation(pages, position="sidebar", expanded=True)
+
+# ─── Sidebar Toggle Helper (di main content area) ────────────────────────────
+# Info box untuk membantu user jika sidebar tersembunyi
+st.markdown(f"""
+<div style="position: fixed; top: 0.5rem; right: 0.5rem; z-index: 999998; 
+            background: {COLORS['card']}; border: 1px solid {COLORS['border']}; 
+            border-radius: 8px; padding: 0.5rem 0.8rem; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 0.7rem; color: {COLORS['muted']};
+            display: flex; align-items: center; gap: 0.4rem;">
+    <span style="font-size: 1rem;">☰</span>
+    <span>Klik ikon menu ☰ di kiri atas untuk buka sidebar</span>
+</div>
+""", unsafe_allow_html=True)
 
 #sidebar api key and footer 
 with st.sidebar:
