@@ -130,48 +130,10 @@ st.markdown("""
 
 st.divider()
 
-# ─── Tabs ─────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🔍 Gemini Overview",
-    "⚙️ API Configuration",
-    "📝 Custom Prompt",
-    "🔄 AI Workflow"
-])
+# Konfigurasi Gemini jika API key sudah ada
+if st.session_state.get("llm_api_key"):
+    configure_gemini()
 
-<<<<<<< HEAD
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 1: GEMINI OVERVIEW
-# ══════════════════════════════════════════════════════════════════════════════
-with tab1:
-    st.markdown("### Model Information & Capabilities")
-    
-    # Model Basic Info
-    col_model1, col_model2, col_model3 = st.columns(3)
-    
-    with col_model1:
-        with st.container(border=True):
-            st.markdown("#### 🎯 Model Name")
-            st.markdown("**Gemini 2.5 Flash**")
-            st.caption("Latest generation AI model by Google")
-    
-    with col_model2:
-        with st.container(border=True):
-            st.markdown("#### 📦 Version")
-            st.markdown("**2.5 Flash**")
-            st.caption("Optimized for speed & cost")
-    
-    with col_model3:
-        with st.container(border=True):
-            st.markdown("#### 🌐 Provider")
-            st.markdown("**Google AI**")
-            st.caption("google.generativeai API")
-    
-    st.markdown("")
-    
-    # Model Purpose
-    with st.container(border=True):
-        st.markdown("#### 🎯 Tujuan Penggunaan")
-=======
 #Role check 
 is_retail = "Retail Manager" in st.session_state.get("user_role", "Retail Manager")
 
@@ -395,20 +357,15 @@ berdasarkan hasil prediksi model XGBoost:<br><br>
 
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("Model Parameters & Configuration"):
->>>>>>> 8b0b439 (fix: permanent sidebar)
         st.markdown("""
-Memberikan **rekomendasi operasional retail berdasarkan hasil prediksi model XGBoost**.
-
-Model Gemini diintegrasikan untuk:
-1. **Analisis Mendalam** - Menginterpretasi hasil prediksi risiko dari XGBoost
-2. **Rekomendasi Bisnis** - Membuat strategi actionable untuk manager retail
-3. **Konteks Tambahan** - Menambah konteks bisnis pada data teknis
-4. **Natural Language** - Menghasilkan rekomendasi dalam bahasa yang mudah dipahami
-        """)
-    
-    st.markdown("")
-    
-    # Input & Output
+| Parameter | Value | Keterangan |
+|-----------|-------|------------|
+| **Model ID** | gemini-2.5-flash | Official model identifier |
+| **Temperature** | 0.4 | Balanced determinism |
+| **Top P** | 0.92 | Nucleus sampling |
+| **Max Output Tokens** | 4096 | Output length limit |
+| **Response Language** | Bahasa Indonesia | Default untuk laporan |
+""")
     col_io1, col_io2 = st.columns(2)
     
     with col_io1:
