@@ -19,72 +19,63 @@ st.set_page_config(
     page_title="Food Waste Recommendation",
     page_icon="♻️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",  # expanded on desktop, collapsed on mobile
 )
 
 #inject global css 
 from utils.theme import inject_css, COLORS
 inject_css()
 
-# Force sidebar to stay open with JavaScript
-st.markdown("""
-<script>
-    // Prevent sidebar from closing
-    const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
-    if (sidebar) {
-        sidebar.style.display = 'block';
-        sidebar.style.visibility = 'visible';
-    }
-    
-    // Hide collapse button
-    const collapseButton = window.parent.document.querySelector('[data-testid="collapsedControl"]');
-    if (collapseButton) {
-        collapseButton.style.display = 'none';
-    }
-</script>
-""", unsafe_allow_html=True)
-
-#custom sidebar css 
+#custom sidebar css - fully responsive on all screen sizes
 st.markdown(f"""
 <style>
-    /* Force sidebar to always be visible */
-    section[data-testid="stSidebar"] {{
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        transform: translateX(0) !important;
-        transition: none !important;
-    }}
-    
-    /* Hide all collapse controls */
-    [data-testid="collapsedControl"] {{
-        display: none !important;
-        visibility: hidden !important;
-    }}
-    
-    button[kind="header"] {{
-        display: none !important;
-        visibility: hidden !important;
-    }}
-    
-    /* Remove collapse button from sidebar header */
-    section[data-testid="stSidebar"] > div:first-child > button {{
-        display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }}
-    
-    /* Ensure main content adjusts for permanent sidebar */
-    .main {{
-        margin-left: 0 !important;
-    }}
-    
-    /* Sidebar Background */
+    /* ── Sidebar Background & Base Styling ─────────────────────────────── */
     [data-testid="stSidebar"] {{
         background: linear-gradient(180deg, {COLORS['card']} 0%, #141822 50%, {COLORS['bg']} 100%);
         border-right: 1px solid {COLORS['border']};
-        min-width: 280px !important;
-        max-width: 280px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }}
+    
+    /* Desktop: Collapsible sidebar with fixed width when expanded */
+    @media (min-width: 769px) {{
+        [data-testid="stSidebar"] {{
+            min-width: 280px !important;
+            max-width: 280px !important;
+        }}
+        
+        /* When collapsed on desktop, hide completely to expand content area */
+        [data-testid="stSidebar"][aria-expanded="false"] {{
+            min-width: 0 !important;
+            max-width: 0 !important;
+            border-right: none;
+        }}
+    }}
+    
+    /* Tablet: Slightly narrower sidebar */
+    @media (min-width: 481px) and (max-width: 768px) {{
+        [data-testid="stSidebar"] {{
+            width: 260px !important;
+            z-index: 999999 !important;
+        }}
+        
+        /* Sidebar as overlay on tablet */
+        [data-testid="stSidebar"][aria-expanded="false"] {{
+            transform: translateX(-100%);
+        }}
+    }}
+    
+    /* Mobile: Sidebar as full overlay, collapsible */
+    @media (max-width: 480px) {{
+        [data-testid="stSidebar"] {{
+            width: 280px !important;
+            max-width: 85vw !important;
+            z-index: 999999 !important;
+        }}
+        
+        /* Hide sidebar when collapsed on mobile */
+        [data-testid="stSidebar"][aria-expanded="false"] {{
+            transform: translateX(-100%);
+        }}
     }}
     
     /* Sidebar Text Colors */
@@ -155,11 +146,42 @@ st.markdown(f"""
         margin-bottom: 0px !important;
     }}
 
-    /* Main Container */
+    /* Main Container - Responsive padding and max-width */
     .main .block-container {{
         padding-top: 1.5rem;
         padding-bottom: 2rem;
-        max-width: 1200px;
+        max-width: 1400px;
+        transition: all 0.3s ease;
+    }}
+    
+    /* Desktop: Expand content area when sidebar is collapsed */
+    @media (min-width: 769px) {{
+        .main .block-container {{
+            max-width: 1400px;
+        }}
+        
+        /* When sidebar is collapsed, use full width */
+        [data-testid="stSidebar"][aria-expanded="false"] ~ .main .block-container {{
+            max-width: 100%;
+            padding-left: 3rem;
+            padding-right: 3rem;
+        }}
+    }}
+    
+    /* Tablet: Medium padding */
+    @media (min-width: 481px) and (max-width: 768px) {{
+        .main .block-container {{
+            padding: 1.2rem 1.5rem;
+            max-width: 100%;
+        }}
+    }}
+    
+    /* Mobile: Compact padding */
+    @media (max-width: 480px) {{
+        .main .block-container {{
+            padding: 1rem;
+            max-width: 100%;
+        }}
     }}
     
     /* Divider Lines */
@@ -168,10 +190,10 @@ st.markdown(f"""
         margin: 1rem 0 !important;
     }}
     
-    /* Hide Streamlit Branding */
+    /* Hide Streamlit Branding — header intentionally NOT hidden,
+       it contains the sidebar toggle button on mobile */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
-    header {{visibility: hidden;}}
 
     /* Sidebar Custom Components */
     
@@ -216,6 +238,22 @@ st.markdown(f"""
         color: {COLORS['muted']};
         font-weight: 600;
     }}
+    
+    /* Mobile: Smaller logo */
+    @media (max-width: 480px) {{
+        .sidebar-logo {{
+            padding: 1rem 0.8rem 0.8rem 0.8rem;
+        }}
+        .sidebar-logo-icon {{ 
+            font-size: 42px; 
+        }}
+        .sidebar-logo-title {{ 
+            font-size: 16px; 
+        }}
+        .sidebar-logo-subtitle {{ 
+            font-size: 9px; 
+        }}
+    }}
 
     /* Role Selector */
     .role-container {{
@@ -252,6 +290,20 @@ st.markdown(f"""
     .role-info.tech {{
         background: rgba(33,150,243,.06);
         border-color: rgba(33,150,243,.2);
+    }}
+    
+    /* Mobile: Compact role selector */
+    @media (max-width: 480px) {{
+        .role-container {{
+            padding: 0.8rem 0.9rem;
+        }}
+        .role-label {{
+            font-size: .65rem;
+        }}
+        .role-info {{
+            font-size: .7rem;
+            padding: .5rem .7rem;
+        }}
     }}
 
     /* API Key Section */
@@ -446,18 +498,6 @@ else:
     }
 
 pg = st.navigation(pages, position="sidebar", expanded=True)
-
-#Sidebar Toggle Helper 
-# Info box untuk membantu user jika sidebar tersembunyi
-st.markdown(f"""
-<div style="position: fixed; top: 0.5rem; right: 0.5rem; z-index: 999998; 
-            background: {COLORS['card']}; border: 1px solid {COLORS['border']}; 
-            border-radius: 8px; padding: 0.5rem 0.8rem; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 0.7rem; color: {COLORS['muted']};
-            display: flex; align-items: center; gap: 0.4rem;">
-    <span style="font-size: 1rem;">☰</span>
-</div>
-""", unsafe_allow_html=True)
 
 #sidebar api key and footer 
 with st.sidebar:
