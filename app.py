@@ -456,7 +456,6 @@ st.markdown(f"""
             box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 0.7rem; color: {COLORS['muted']};
             display: flex; align-items: center; gap: 0.4rem;">
     <span style="font-size: 1rem;">☰</span>
-    <span>Klik ikon menu ☰ di kiri atas untuk buka sidebar</span>
 </div>
 """, unsafe_allow_html=True)
 
