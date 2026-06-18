@@ -26,60 +26,73 @@ st.set_page_config(
 from utils.theme import inject_css, COLORS
 inject_css()
 
+# Force sidebar to stay open with JavaScript
+st.markdown("""
+<script>
+    // Prevent sidebar from closing
+    const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+    if (sidebar) {
+        sidebar.style.display = 'block';
+        sidebar.style.visibility = 'visible';
+    }
+    
+    // Hide collapse button
+    const collapseButton = window.parent.document.querySelector('[data-testid="collapsedControl"]');
+    if (collapseButton) {
+        collapseButton.style.display = 'none';
+    }
+</script>
+""", unsafe_allow_html=True)
+
 #custom sidebar css 
 st.markdown(f"""
 <style>
-    /* ─── IMPORTANT: Hamburger Menu Fix ─────────────────────────── */
-    /* Ensure hamburger menu is always visible and accessible */
-    button[kind="header"] {{
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        position: fixed !important;
-        top: 0.5rem !important;
-        left: 0.5rem !important;
-        z-index: 999999 !important;
-        background: {COLORS['card']} !important;
-        border: 1px solid {COLORS['border']} !important;
-        border-radius: 8px !important;
-        padding: 0.5rem !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-        transition: all 0.2s ease !important;
-    }}
+    /* ═══════════════════════════════════════════════════════
+       SIDEBAR PERMANENT - FORCE ALWAYS VISIBLE
+       ═══════════════════════════════════════════════════════ */
     
-    button[kind="header"]:hover {{
-        background: {COLORS['green']} !important;
-        transform: scale(1.05) !important;
-    }}
-    
-    /* Show hamburger icon even when sidebar is collapsed */
-    .st-emotion-cache-1gulkj5 {{
+    /* Force sidebar to always be visible */
+    section[data-testid="stSidebar"] {{
         display: block !important;
-    }}
-    
-    /* Ensure sidebar toggle is always accessible */
-    [data-testid="collapsedControl"] {{
-        display: flex !important;
         visibility: visible !important;
         opacity: 1 !important;
-        background: {COLORS['card']} !important;
-        border: 1px solid {COLORS['green']} !important;
-        border-radius: 8px !important;
-        padding: 0.5rem 0.7rem !important;
-        box-shadow: 0 2px 8px rgba(76,175,80,0.3) !important;
+        transform: translateX(0) !important;
+        transition: none !important;
     }}
     
-    [data-testid="collapsedControl"]:hover {{
-        background: {COLORS['green']} !important;
-        border-color: {COLORS['green']} !important;
-        transform: translateX(2px) !important;
+    /* Hide all collapse controls */
+    [data-testid="collapsedControl"] {{
+        display: none !important;
+        visibility: hidden !important;
     }}
-
+    
+    button[kind="header"] {{
+        display: none !important;
+        visibility: hidden !important;
+    }}
+    
+    /* Remove collapse button from sidebar header */
+    section[data-testid="stSidebar"] > div:first-child > button {{
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }}
+    
+    /* Ensure main content adjusts for permanent sidebar */
+    .main {{
+        margin-left: 0 !important;
+    }}
+    
+    /* ═══════════════════════════════════════════════════════
+       SIDEBAR STYLING
+       ═══════════════════════════════════════════════════════ */
+    
     /* Sidebar Background */
     [data-testid="stSidebar"] {{
         background: linear-gradient(180deg, {COLORS['card']} 0%, #141822 50%, {COLORS['bg']} 100%);
         border-right: 1px solid {COLORS['border']};
         min-width: 280px !important;
+        max-width: 280px !important;
     }}
     
     /* Sidebar Text Colors */

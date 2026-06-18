@@ -1,14 +1,14 @@
 """
-AI Model & Gemini Assistant
-=============================
-Halaman dokumentasi dan konfigurasi Gemini API untuk sistem Food Waste Recommendation.
-Dirancang untuk trainer, evaluator, dan stakeholder yang ingin memahami integrasi AI.
+AI Assistant & Gemini Documentation
 
-Structure:
-- Tab 1: Gemini Overview (Model info & capabilities)
-- Tab 2: API Configuration (Setup & connection)
-- Tab 3: Custom Prompt (System prompt documentation)
-- Tab 4: AI Workflow (Visual pipeline & architecture)
+Halaman AI Assistant (Retail Manager) dan dokumentasi Gemini (Stakeholder Teknis).
+
+Tabs:
+- Tab 1: Chat Assistant      
+- Tab 2: Gemini Overview     
+- Tab 3: API Configuration  
+- Tab 4: Custom Prompt       
+- Tab 5: AI Workflow         
 """
 
 import streamlit as st
@@ -138,6 +138,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🔄 AI Workflow"
 ])
 
+<<<<<<< HEAD
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1: GEMINI OVERVIEW
 # ══════════════════════════════════════════════════════════════════════════════
@@ -170,6 +171,231 @@ with tab1:
     # Model Purpose
     with st.container(border=True):
         st.markdown("#### 🎯 Tujuan Penggunaan")
+=======
+#Role check 
+is_retail = "Retail Manager" in st.session_state.get("user_role", "Retail Manager")
+
+#Tabs 
+# Retail Manager: Chat tab tampil pertama (paling relevan)
+# Stakeholder Teknis: urutan teknis lebih natural
+if is_retail:
+    tab_chat, tab_ov, tab_cfg, tab_prompt, tab_wf = st.tabs([
+        "💬 Chat Assistant",
+        "🔍 Gemini Overview",
+        "⚙️ API Configuration",
+        "📝 Custom Prompt",
+        "🔄 AI Workflow",
+    ])
+else:
+    tab_ov, tab_cfg, tab_prompt, tab_wf, tab_chat = st.tabs([
+        "🔍 Gemini Overview",
+        "⚙️ API Configuration",
+        "📝 Custom Prompt",
+        "🔄 AI Workflow",
+        "💬 Chat Assistant",
+    ])
+
+# TAB CHAT ASSISTANT
+with tab_chat:
+    section_header("💬 Chat dengan AI Assistant")
+
+    #Konteks dari prediksi.py 
+    ctx = st.session_state.get("prediction_context")
+
+    if ctx:
+        risk_color = (
+            C["green"] if ctx["risk_level"] == "AMAN"
+            else C["orange"] if ctx["risk_level"] == "WASPADA"
+            else C["red"]
+        )
+        st.markdown(f"""
+<div class="ibox green" style="margin-bottom:1rem;">
+    <b>📦 Konteks Aktif dari Prediksi Terakhir</b><br>
+    <div style="display:flex; gap:1.5rem; margin-top:.5rem; flex-wrap:wrap;">
+        <span>Produk: <b>{ctx['product_type']}</b></span>
+        <span>Risiko: <b style="color:{risk_color};">{ctx['risk_level']}</b>
+              ({ctx['risk_probability']}%)</span>
+        <span>Kadaluarsa: <b>{ctx['days_until_expiry']} hari</b></span>
+        <span>Penyimpanan: <b>{ctx['storage_condition']}</b></span>
+    </div>
+    <div style="font-size:.7rem; color:{C['muted']}; margin-top:.4rem;">
+        Dianalisis pada {ctx.get('timestamp','—')}
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+        # Suggested questions berdasarkan risk level
+        st.markdown(f'<div style="font-size:.78rem; color:{C["muted"]}; margin-bottom:.4rem;"><b>Pertanyaan cepat:</b></div>', unsafe_allow_html=True)
+        sq_col1, sq_col2, sq_col3 = st.columns(3)
+        if ctx["risk_level"] == "AMAN":
+            sq = ["Bagaimana cara mempertahankan kualitas produk ini?",
+                  "Kapan waktu yang tepat mulai memantau ulang?",
+                  "Tips rotasi stok FIFO yang efektif?"]
+        elif ctx["risk_level"] == "WASPADA":
+            sq = [f"Diskon berapa % yang disarankan untuk {ctx['product_type']}?",
+                  "Apa langkah pertama yang harus saya lakukan sekarang?",
+                  "Bagaimana cara memperlambat proses pembusukan?"]
+        else:
+            sq = [f"Tindakan paling cepat untuk {ctx['product_type']} risiko tinggi?",
+                  "Bagaimana strategi flash sale yang efektif?",
+                  "Apakah produk ini masih layak dijual atau harus dibuang?"]
+
+        for idx, question in enumerate(sq):
+            col = [sq_col1, sq_col2, sq_col3][idx]
+            with col:
+                if st.button(question, key=f"sq_{question[:20]}", use_container_width=True):
+                    st.session_state.chat_history.append({"role": "user", "content": question})
+                    with st.spinner("🤔 AI sedang menjawab..."):
+                        context_str = (
+                            f"Produk: {ctx['product_type']}, "
+                            f"Risiko: {ctx['risk_level']} ({ctx['risk_probability']}%), "
+                            f"Sisa {ctx['days_until_expiry']} hari kadaluarsa, "
+                            f"Penyimpanan: {ctx['storage_condition']}"
+                        )
+                        full_prompt = (
+                            f"Konteks produk retail:\n{context_str}\n\n"
+                            f"Pertanyaan: {question}\n\n"
+                            f"Jawab dalam Bahasa Indonesia, singkat dan actionable (maks 3 paragraf)."
+                        )
+                        answer = call_gemini(full_prompt)
+                        st.session_state.chat_history.append({"role": "assistant", "content": answer})
+                    st.rerun()
+    else:
+        st.markdown(f"""
+<div class="ibox orange" style="text-align:center; padding:1.5rem;">
+    <div style="font-size:1.8rem; margin-bottom:.5rem;">🔮</div>
+    <b>Belum Ada Konteks Prediksi</b><br>
+    <span style="font-size:.82rem; color:{C['muted']};">
+        Buka halaman <b>Prediksi Risiko</b> dan jalankan analisis produk terlebih dahulu.<br>
+        Konteks produk akan otomatis tersedia di sini.
+    </span>
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    #API Key check 
+    if not st.session_state.get("llm_api_key"):
+        st.markdown(f"""
+<div class="ibox orange">
+    <b>API Key belum dikonfigurasi.</b>
+    Isi <b>Gemini API Key</b> di sidebar untuk mengaktifkan Chat Assistant.
+</div>
+""", unsafe_allow_html=True)
+    else:
+        #Chat history display
+        chat_box = st.container(height=420, border=False)
+        with chat_box:
+            if st.session_state.chat_history:
+                for msg in st.session_state.chat_history:
+                    with st.chat_message(msg["role"], avatar="👤" if msg["role"] == "user" else "🤖"):
+                        st.markdown(msg["content"])
+            else:
+                st.markdown(f"""
+<div style="text-align:center; padding:2rem; color:{C['muted']};">
+    <div style="font-size:2rem; margin-bottom:.5rem;">💬</div>
+    Mulai percakapan dengan AI Assistant.<br>
+    <span style="font-size:.78rem;">Tanyakan apa saja tentang manajemen food waste.</span>
+</div>
+""", unsafe_allow_html=True)
+
+        #Input area 
+        user_input = st.chat_input("Ketik pertanyaan Anda...")
+
+        if user_input:
+            st.session_state.chat_history.append({"role": "user", "content": user_input})
+
+            with st.spinner("🤔 AI sedang menjawab..."):
+                # Build context-aware prompt
+                if ctx:
+                    context_str = (
+                        f"Konteks produk saat ini:\n"
+                        f"- Produk: {ctx['product_type']}\n"
+                        f"- Tingkat risiko: {ctx['risk_level']} ({ctx['risk_probability']}%)\n"
+                        f"- Sisa kadaluarsa: {ctx['days_until_expiry']} hari\n"
+                        f"- Kondisi penyimpanan: {ctx['storage_condition']}\n"
+                    )
+                else:
+                    context_str = "Tidak ada konteks prediksi aktif."
+
+                full_prompt = (
+                    f"Anda adalah konsultan retail ahli food waste management.\n"
+                    f"{context_str}\n"
+                    f"Pertanyaan user: {user_input}\n\n"
+                    f"Jawab dalam Bahasa Indonesia yang jelas dan praktis. "
+                    f"Fokus pada tindakan operasional. Maksimal 3 paragraf."
+                )
+                answer = call_gemini(full_prompt)
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
+            st.rerun()
+
+        # ── Clear history ─────────────────────────────────────────────────
+        if st.session_state.chat_history:
+            if st.button("🗑️ Hapus Riwayat Chat", use_container_width=True):
+                st.session_state.chat_history = []
+                st.rerun()
+
+# TAB GEMINI OVERVIEW
+with tab_ov:
+    section_header("🔍 Model Information & Capabilities")
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown(f"""
+<div class="kpi-wrap kpi-green">
+    <span class="kpi-icon">🎯</span>
+    <div class="kpi-lbl">Model</div>
+    <div class="kpi-val" style="font-size:1.2rem;">Gemini 2.5</div>
+    <div class="kpi-sub neu">Flash variant</div>
+</div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""
+<div class="kpi-wrap kpi-blue">
+    <span class="kpi-icon">⚡</span>
+    <div class="kpi-lbl">Response Time</div>
+    <div class="kpi-val" style="font-size:1.2rem;">2–5s</div>
+    <div class="kpi-sub neu">per request</div>
+</div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""
+<div class="kpi-wrap kpi-orange">
+    <span class="kpi-icon">🌐</span>
+    <div class="kpi-lbl">Provider</div>
+    <div class="kpi-val" style="font-size:1.2rem;">Google AI</div>
+    <div class="kpi-sub neu">generativeai SDK</div>
+</div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    section_header("🎯 Tujuan Penggunaan")
+    st.markdown(f"""
+<div class="ibox green">
+Gemini diintegrasikan untuk memberikan <b>rekomendasi operasional retail</b>
+berdasarkan hasil prediksi model XGBoost:<br><br>
+1. <b>Analisis Mendalam</b> — Interpretasi hasil prediksi risiko spoilage<br>
+2. <b>Rekomendasi Bisnis</b> — Strategi actionable untuk manager retail<br>
+3. <b>Chat Assistant</b> — Tanya-jawab kontekstual berbasis data produk aktif<br>
+4. <b>Natural Language</b> — Output dalam Bahasa Indonesia yang mudah dipahami
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    col_in, col_out = st.columns(2)
+    with col_in:
+        section_header("📥 Input yang Diterima")
+        for item in ["Kategori & jenis produk","Sisa hari kadaluarsa",
+                      "Kondisi penyimpanan","Probabilitas risiko (0–100%)",
+                      "Harga modal & jual","Stok & unit terjual"]:
+            st.write(f"• {item}")
+    with col_out:
+        section_header("📤 Output yang Dihasilkan")
+        for item in ["Analisis risiko mendalam","Faktor utama risiko",
+                      "Rekomendasi tindakan (actionable)","Strategi diskon optimal",
+                      "Saran manajemen inventori","Percakapan kontekstual"]:
+            st.write(f"• {item}")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    with st.expander("Model Parameters & Configuration"):
+>>>>>>> 8b0b439 (fix: permanent sidebar)
         st.markdown("""
 Memberikan **rekomendasi operasional retail berdasarkan hasil prediksi model XGBoost**.
 
