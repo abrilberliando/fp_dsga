@@ -548,11 +548,10 @@ with tab_prompt:
 **Role Definition** — Konsultan retail food waste  
 **Context Injection** — Data produk + hasil prediksi XGBoost  
 **Output Format** — Ringkasan · Faktor Utama · Rekomendasi · Kesimpulan  
-**Rules** — Bahasa Indonesia · max 250 kata · no ML theory · actionable
+**Rules** — Bahasa Indonesia · max 250 kata · no ML theory · actionable  
+**3. Quality Criteria:** Actionable, Data-driven, Specific, Profitable  
+**4. Output Format Specification:** Struktur laporan 7 poin yang komprehensif.
 """)
-        **3. Quality Criteria:** Actionable, Data-driven, Specific, Profitable
-        **4. Output Format Specification:** Struktur laporan 7 poin yang komprehensif.
-        """)
 # TAB AI WORKFLOW
 with tab_wf:
     section_header("🔄 System Architecture & Data Flow")

@@ -21,7 +21,7 @@ from plotly.subplots import make_subplots
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data", "perishable_goods_management.csv")
 
-# TEMA WARNA  (selaras dengan app.py — green sidebar)
+#color theme
 C = {
     "green"  : "#4caf50",
     "green2" : "#66bb6a",
@@ -262,9 +262,7 @@ if dff.empty:
     st.stop()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── HEADER ───────────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+#HEADER 
 st.markdown("""
 <div style="border-left:4px solid #4caf50; padding-left:16px; margin-bottom:4px;">
     <h1 style="margin:0; font-size:28px; font-weight:800;">🏠 Dashboard Awal</h1>
@@ -290,9 +288,7 @@ st.markdown(f"""
 st.divider()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 1: KPI CARDS ─────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 1: KPI CARDS
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -423,10 +419,7 @@ with col_pie:
 )
     st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 3: SPOILAGE PER KATEGORI & REGION ────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+#SPOILAGE PER KATEGORI & REGION 
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -498,9 +491,7 @@ with col_reg:
     st.plotly_chart(fig_hm, use_container_width=True, config={"displayModeBar": False})
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 4: EDA FITUR ─────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+#SECTION 4: EDA FITUR
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -594,10 +585,7 @@ with tab_corr:
 )
     st.plotly_chart(fig_corr, use_container_width=True, config={"displayModeBar": False})
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 5: FEATURE IMPORTANCE ────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+#FEATURE IMPORTANCE 
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -685,9 +673,7 @@ else:
     st.info("ℹ️ File model tidak ditemukan. Jalankan `train_model.py` terlebih dahulu.")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 6: MODEL OVERVIEW ────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+#SECTION 6: MODEL OVERVIEW 
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -760,10 +746,7 @@ with hp_col:
         },
     )
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 7: WASTE COST ANALYSIS ───────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+#WASTE COST ANALYSIS
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>
@@ -807,9 +790,7 @@ with wc2:
     st.plotly_chart(fig_wc2, use_container_width=True, config={"displayModeBar": False})
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── SECTION 8: QUICK NAVIGATION ──────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+#SECTION 8: QUICK NAVIGATION
 st.markdown("""
 <div class="sec-hdr">
     <div class="sec-dot"></div>

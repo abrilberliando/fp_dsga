@@ -47,10 +47,6 @@ st.markdown("""
 #custom sidebar css 
 st.markdown(f"""
 <style>
-    /* ═══════════════════════════════════════════════════════
-       SIDEBAR PERMANENT - FORCE ALWAYS VISIBLE
-       ═══════════════════════════════════════════════════════ */
-    
     /* Force sidebar to always be visible */
     section[data-testid="stSidebar"] {{
         display: block !important;
@@ -82,10 +78,6 @@ st.markdown(f"""
     .main {{
         margin-left: 0 !important;
     }}
-    
-    /* ═══════════════════════════════════════════════════════
-       SIDEBAR STYLING
-       ═══════════════════════════════════════════════════════ */
     
     /* Sidebar Background */
     [data-testid="stSidebar"] {{
@@ -181,7 +173,7 @@ st.markdown(f"""
     footer {{visibility: hidden;}}
     header {{visibility: hidden;}}
 
-    /* ── Sidebar Custom Components ──────────────────────── */
+    /* Sidebar Custom Components */
     
     /* Logo Container */
     .sidebar-logo {{
@@ -455,7 +447,7 @@ else:
 
 pg = st.navigation(pages, position="sidebar", expanded=True)
 
-# ─── Sidebar Toggle Helper (di main content area) ────────────────────────────
+#Sidebar Toggle Helper 
 # Info box untuk membantu user jika sidebar tersembunyi
 st.markdown(f"""
 <div style="position: fixed; top: 0.5rem; right: 0.5rem; z-index: 999998; 
