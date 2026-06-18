@@ -14,64 +14,72 @@ Tabs:
 import streamlit as st
 import google.generativeai as genai
 
-# ─── Page Config ──────────────────────────────────────────────────────────────
-st.set_page_config(layout="wide")
+# set_page_config app.py
 
-# ─── Session State Initialization ─────────────────────────────────────────────
-if "gemini_test_result" not in st.session_state:
-    st.session_state.gemini_test_result = None
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.theme import inject_css, COLORS, page_header, section_header
 
-if "gemini_connection_status" not in st.session_state:
-    st.session_state.gemini_connection_status = "Not Connected"
+inject_css()
+C = COLORS
 
-# ─── Helper Functions ─────────────────────────────────────────────────────────
+# Session State
+for _k, _v in [
+    ("gemini_test_result", None),
+    ("gemini_connection_status", "Not Connected"),
+    ("gemini_configured", False),
+    ("chat_history", []),
+]:
+    if _k not in st.session_state:
+        st.session_state[_k] = _v
+
+#Helper functions 
+def configure_gemini():
+    api_key = st.session_state.get("llm_api_key", "")
+    if not api_key:
+        return False
+    try:
+        genai.configure(api_key=api_key)
+        st.session_state.gemini_configured = True
+        return True
+    except Exception:
+        return False
+
+def call_gemini(prompt_text: str) -> str:
+    if not st.session_state.gemini_configured:
+        if not configure_gemini():
+            return "❌ API Key belum dikonfigurasi. Isi API Key di sidebar."
+    try:
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        response = model.generate_content(prompt_text)
+        return response.text
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
 
 def test_gemini_connection():
     """Test koneksi ke Gemini API."""
     api_key = st.session_state.get("llm_api_key", "")
-    
     if not api_key:
-        return {
-            "status": "FAILED",
-            "message": "❌ API Key belum dikonfigurasi",
-            "details": "Silakan isi API Key di sidebar terlebih dahulu"
-        }
-    
+        return {"status": "FAILED", "message": "❌ API Key belum dikonfigurasi",
+                "details": "Isi API Key di sidebar terlebih dahulu"}
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.5-flash")
-        
-        # Simple test request
-        response = model.generate_content("Test connection: reply with 'Connection successful'")
-        
+        response = model.generate_content("Reply with: Connection successful")
         if response.text:
-            return {
-                "status": "SUCCESS",
-                "message": "✅ Koneksi Berhasil",
-                "details": f"Model: Gemini 2.5 Flash | Response: {response.text[:100]}..."
-            }
-        else:
-            return {
-                "status": "FAILED",
-                "message": "❌ Tidak ada response dari API",
-                "details": "Coba lagi atau periksa API key"
-            }
+            return {"status": "SUCCESS", "message": "✅ Koneksi Berhasil",
+                    "details": f"Gemini 2.5 Flash aktif · {response.text[:80]}"}
+        return {"status": "FAILED", "message": "❌ Tidak ada response", "details": "Coba lagi"}
     except Exception as e:
-        return {
-            "status": "FAILED",
-            "message": "❌ Koneksi Gagal",
-            "details": f"Error: {str(e)}"
-        }
+        return {"status": "FAILED", "message": "❌ Koneksi Gagal", "details": str(e)}
 
 
 def get_system_prompt():
-    """Return system prompt dokumentasi untuk Gemini."""
     return """Anda adalah konsultan retail yang membantu mengurangi food waste berdasarkan hasil prediksi machine learning.
 
 Analisis data berikut:
 
 HASIL PREDIKSI
-
 * Probabilitas Risiko: {probability}
 * Kategori Risiko: {risk_level}
 
@@ -79,99 +87,40 @@ DATA PRODUK
 {product_context}
 
 Tugas:
-
 Buat laporan singkat dan praktis dengan format:
 
 ## Ringkasan
-
 Jelaskan kondisi produk saat ini dalam 2-3 kalimat.
 
 ## Faktor Utama
-
 Sebutkan maksimal 3 faktor yang paling berpengaruh terhadap risiko.
 
 ## Rekomendasi
-
 Berikan maksimal 3 tindakan yang dapat dilakukan segera.
 
 ## Kesimpulan
-
 Berikan ringkasan singkat dalam 1-2 kalimat.
 
 Aturan:
-
 * Fokus pada tindakan operasional.
 * Gunakan bahasa Indonesia yang jelas dan profesional.
 * Maksimal 250 kata.
 * Hindari penjelasan teori machine learning.
-* Hindari pengulangan informasi input.
-* Prioritaskan informasi yang paling penting bagi manager toko.
 """
 
-
-def copy_to_clipboard(text: str):
-    """Helper untuk copy text (display only, real copy di browser)."""
-    st.code(text, language="text")
-
-
-# ─── Page Title ───────────────────────────────────────────────────────────────
-st.markdown("""
-<div style="
-    text-align: center;
-    padding: 20px 10px;
-">
-    <div style="font-size: 48px;">🤖</div>
-    <h1 style="margin:8px 0 4px 0; font-size:32px;">AI Model & Gemini Assistant</h1>
-    <p style="margin:0; opacity:0.6; font-size:14px;">
-        Dokumentasi & Konfigurasi Gemini API untuk Food Waste Recommendation System
-    </p>
-</div>
-""", unsafe_allow_html=True)
+#Page Header
+page_header(
+    title="AI Assistant & Gemini",
+    subtitle="Chat Assistant berbasis Gemini AI · Dokumentasi integrasi untuk Stakeholder Teknis",
+    icon="🤖",
+)
 
 st.divider()
 
-# ─── Tabs ─────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🔍 Gemini Overview",
-    "⚙️ API Configuration",
-    "📝 Custom Prompt",
-    "🔄 AI Workflow"
-])
+# Konfigurasi Gemini jika API key sudah ada
+if st.session_state.get("llm_api_key"):
+    configure_gemini()
 
-<<<<<<< HEAD
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 1: GEMINI OVERVIEW
-# ══════════════════════════════════════════════════════════════════════════════
-with tab1:
-    st.markdown("### Model Information & Capabilities")
-    
-    # Model Basic Info
-    col_model1, col_model2, col_model3 = st.columns(3)
-    
-    with col_model1:
-        with st.container(border=True):
-            st.markdown("#### 🎯 Model Name")
-            st.markdown("**Gemini 2.5 Flash**")
-            st.caption("Latest generation AI model by Google")
-    
-    with col_model2:
-        with st.container(border=True):
-            st.markdown("#### 📦 Version")
-            st.markdown("**2.5 Flash**")
-            st.caption("Optimized for speed & cost")
-    
-    with col_model3:
-        with st.container(border=True):
-            st.markdown("#### 🌐 Provider")
-            st.markdown("**Google AI**")
-            st.caption("google.generativeai API")
-    
-    st.markdown("")
-    
-    # Model Purpose
-    with st.container(border=True):
-        st.markdown("#### 🎯 Tujuan Penggunaan")
-=======
 #Role check 
 is_retail = "Retail Manager" in st.session_state.get("user_role", "Retail Manager")
 
@@ -395,242 +344,219 @@ berdasarkan hasil prediksi model XGBoost:<br><br>
 
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("Model Parameters & Configuration"):
->>>>>>> 8b0b439 (fix: permanent sidebar)
         st.markdown("""
-Memberikan **rekomendasi operasional retail berdasarkan hasil prediksi model XGBoost**.
+| Parameter | Value | Keterangan |
+|-----------|-------|------------|
+| **Model ID** | gemini-2.5-flash | Official model identifier |
+| **Temperature** | 0.4 | Balanced determinism |
+| **Top P** | 0.92 | Nucleus sampling |
+| **Max Output Tokens** | 4096 | Output length limit |
+| **Response Language** | Bahasa Indonesia | Default untuk laporan |
+""")
 
-Model Gemini diintegrasikan untuk:
-1. **Analisis Mendalam** - Menginterpretasi hasil prediksi risiko dari XGBoost
-2. **Rekomendasi Bisnis** - Membuat strategi actionable untuk manager retail
-3. **Konteks Tambahan** - Menambah konteks bisnis pada data teknis
-4. **Natural Language** - Menghasilkan rekomendasi dalam bahasa yang mudah dipahami
-        """)
-    
-    st.markdown("")
-    
-    # Input & Output
-    col_io1, col_io2 = st.columns(2)
-    
-    with col_io1:
-        with st.container(border=True):
-            st.markdown("#### 📥 Input yang Diterima")
-            inputs = [
-                "🏷️ Kategori Produk (e.g., Dairy, Buah)",
-                "📦 Jumlah Stok (unit)",
-                "📅 Sisa Hari Kadaluarsa (hari)",
-                "💰 Diskon Saat Ini (%)",
-                "⚠️ Probabilitas Risiko (0-100%)",
-                "🎯 Status Risiko (LOW/MEDIUM/HIGH/CRITICAL)"
-            ]
-            for inp in inputs:
-                st.write(f"• {inp}")
-    
-    with col_io2:
-        with st.container(border=True):
-            st.markdown("#### 📤 Output yang Dihasilkan")
-            outputs = [
-                "🔍 Analisis Risiko (detailed explanation)",
-                "💬 Main Factors (faktor utama risiko)",
-                "✅ Rekomendasi Aksi (actionable steps)",
-                "🏷️ Strategi Diskon (pricing recommendation)",
-                "📊 Saran Inventaris (inventory action)",
-                "📈 Faktor Tambahan (contributing factors)"
-            ]
-            for out in outputs:
-                st.write(f"• {out}")
-    
-    st.markdown("")
-    
-    # Key Features
-    st.markdown("#### ⚡ Key Features")
-    
-    col_feat1, col_feat2, col_feat3 = st.columns(3)
-    
-    with col_feat1:
-        st.success("✅ JSON Response Parsing")
-        st.caption("Structured output dalam format JSON")
-    
-    with col_feat2:
-        st.info("⚡ Fast Response Time")
-        st.caption("~2-5 detik per request")
-    
-    with col_feat3:
-        st.warning("💰 Cost-Effective")
-        st.caption("Flash model pricing terjangkau")
-    
-    st.markdown("")
-    
-    # Model Parameters
-    with st.expander("📊 Model Parameters & Configuration", expanded=True):
-        st.markdown("""
-        | Parameter | Value | Description |
-        |-----------|-------|-------------|
-        | **Model ID** | gemini-2.5-flash | Official model identifier |
-        | **API Version** | Latest | Auto-updated by SDK |
-        | **Max Tokens** | 1000+ | Output length limit |
-        | **Temperature** | Default (0.7) | Creativity/determinism balance |
-        | **Top P** | Default | Nucleus sampling |
-        | **Response Format** | JSON | Structured output |
-        """)
+# TAB API CONFIGURATION
+with tab_cfg:
+    section_header("⚙️ API Setup & Status")
 
+    # Status info box dengan key detection
+    if st.session_state.get("llm_api_key"):
+        key_masked = st.session_state["llm_api_key"][:8] + "..." + st.session_state["llm_api_key"][-4:]
+        st.markdown(f"""
+<div class="ibox green" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        🔑 <b>API Key Terdeteksi</b><br>
+        <span style="font-size:.75rem; color:{C['muted']}; font-family:'JetBrains Mono',monospace;">
+            {key_masked}
+        </span>
+    </div>
+    <div style="text-align:right;">
+        <span style="font-size:1.8rem;">✅</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+<div class="ibox orange" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        🔑 <b>API Key Belum Dikonfigurasi</b><br>
+        <span style="font-size:.75rem; color:{C['muted']};">
+            Silakan isi <b>Gemini API Key</b> di sidebar untuk melanjutkan
+        </span>
+    </div>
+    <div style="text-align:right;">
+        <span style="font-size:1.8rem;">⚠️</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 2: API CONFIGURATION
-# ══════════════════════════════════════════════════════════════════════════════
-with tab2:
-    st.markdown("### Gemini API Setup & Configuration")
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    # 1. API Key Info (Terpusat ke Sidebar)
-    with st.container(border=True):
-        col_api_info, col_api_status = st.columns([2, 1])
+    # Connection Test Section
+    section_header("🧪 Live Connection Test")
+    
+    col_test_left, col_test_right = st.columns([1, 1])
+    
+    with col_test_left:
+        st.markdown(f"""
+<div style="background:{C['card']}; border:1px solid {C['border']}; border-radius:12px; 
+            padding:1.5rem; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
+    <div>
+        <div style="font-size:.85rem; font-weight:600; color:{C['text']}; margin-bottom:.8rem;">
+            📡 Test Koneksi API
+        </div>
+        <div style="font-size:.75rem; color:{C['muted']}; line-height:1.6; margin-bottom:1rem;">
+            Verifikasi apakah API Key Anda valid dan dapat terhubung ke server Google AI.
+            Test ini akan mengirim request sample untuk memastikan koneksi berjalan dengan baik.
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
         
-        with col_api_info:
-            st.markdown("#### 🔑 API Key Status")
-            st.info("💡 Pengaturan API Key sekarang dikelola secara terpusat melalui **Sidebar** di sebelah kiri layar untuk keamanan global.")
-            
-        with col_api_status:
-            st.markdown("<br>", unsafe_allow_html=True) # Spacer sejajar
-            if st.session_state.get("llm_api_key"):
-                st.success("✅ Key Terdeteksi di Sidebar")
+        if st.button("🔗 Test Koneksi", type="primary", use_container_width=True, key="test_conn_btn"):
+            with st.spinner("⏳ Menghubungkan ke Google AI..."):
+                result = test_gemini_connection()
+                st.session_state.gemini_test_result = result
+                st.session_state.gemini_connection_status = (
+                    "Connected & Verified" if result["status"] == "SUCCESS"
+                    else "Verification Failed"
+                )
+                st.rerun()
+    
+    with col_test_right:
+        st.markdown(f"""
+<div style="background:{C['card']}; border:1px solid {C['border']}; border-radius:12px; 
+            padding:1.5rem; height:100%;">
+    <div style="font-size:.85rem; font-weight:600; color:{C['text']}; margin-bottom:.8rem;">
+        📊 Hasil Test
+    </div>
+""", unsafe_allow_html=True)
+        
+        if st.session_state.gemini_test_result:
+            r = st.session_state.gemini_test_result
+            if r["status"] == "SUCCESS":
+                st.success(r["message"])
+                st.markdown(f"""
+<div style="font-size:.72rem; color:{C['muted']}; margin-top:.5rem; 
+            padding:.6rem; background:rgba(76,175,80,.1); border-radius:6px;">
+    ✓ {r["details"]}
+</div>
+""", unsafe_allow_html=True)
             else:
-                st.warning("⚠️ Key Belum Diisi di Sidebar")
-                
-    st.markdown("")
-    
-    # 2. Test Connection Area (Fungsi Live Test)
-    st.markdown("#### 🧪 Live Verification Test")
-    with st.container(border=True):
-        col_test_btn, col_test_status = st.columns([1, 2])
+                st.error(r["message"])
+                st.markdown(f"""
+<div style="font-size:.72rem; color:{C['muted']}; margin-top:.5rem; 
+            padding:.6rem; background:rgba(244,67,54,.1); border-radius:6px;">
+    ✗ {r["details"]}
+</div>
+""", unsafe_allow_html=True)
+        else:
+            st.info("⏸️ Belum ada hasil test")
+            st.markdown(f"""
+<div style="font-size:.72rem; color:{C['muted']}; margin-top:.5rem; 
+            padding:.6rem; background:rgba(33,150,243,.08); border-radius:6px;">
+    Klik tombol <b>Test Koneksi</b> di sebelah kiri untuk memulai verifikasi.
+</div>
+""", unsafe_allow_html=True)
         
-        with col_test_btn:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔗 Run Live Connection Test", type="primary", use_container_width=True):
-                with st.spinner("Menghubungkan ke server Google AI..."):
-                    # Memanggil fungsi test_gemini_connection yang ada di bagian atas file
-                    result = test_gemini_connection()
-                    st.session_state.gemini_test_result = result
-                    
-                    # Update status global berdasarkan hasil test
-                    if result["status"] == "SUCCESS":
-                        st.session_state.gemini_connection_status = "Connected & Verified"
-                    else:
-                        st.session_state.gemini_connection_status = "Verification Failed"
-                        
-        with col_test_status:
-            if st.session_state.gemini_test_result:
-                result = st.session_state.gemini_test_result
-                if result["status"] == "SUCCESS":
-                    st.success(result["message"])
-                    st.caption(result["details"])
-                else:
-                    st.error(result["message"])
-                    st.caption(result["details"])
-            else:
-                st.caption("Silakan masukkan API Key di sidebar kiri terlebih dahulu, lalu klik tombol untuk menguji keaslian koneksi.")
-                
-    st.markdown("")
-    
-    # 3. Dynamic Connection Status Cards
-    col_status1, col_status2, col_status3 = st.columns(3)
-    
-    with col_status1:
-        with st.container(border=True):
-            st.markdown("#### 🌐 Connection Status")
-            status_now = st.session_state.gemini_connection_status
-            
-            if status_now == "Connected & Verified":
-                st.success(status_now)
-                st.caption("API Key valid & sukses terverifikasi")
-            elif status_now == "Verification Failed":
-                st.error(status_now)
-                st.caption("Koneksi ditolak server Google AI")
-            else:
-                st.warning("Not Connected")
-                st.caption("Koneksi belum diuji coba")
-                
-    with col_status2:
-        with st.container(border=True):
-            st.markdown("#### 🤖 Active Model")
-            st.info("Gemini 2.5 Flash")
-            st.caption("Varian optimal untuk kecepatan & kuota")
-            
-    with col_status3:
-        with st.container(border=True):
-            st.markdown("#### 📡 API Provider")
-            st.info("Google AI")
-            st.caption("google.generativeai SDK")
-            
-    st.markdown("")
-    
-    # 4. Instructions Expander
-    with st.expander("📖 How to Get Gemini API Key", expanded=False):
-        st.markdown("""
-        ### Langkah-langkah Mendapatkan Key:
-        
-        1. **Buka Google AI Studio**
-           - Kunjungi: https://makersuite.google.com/app/apikey
-           - Masuk menggunakan akun Google Anda.
-        
-        2. **Create API Key**
-           - Klik tombol **"Create API Key"**.
-           - Pilih project Google Cloud Anda atau buat baru secara instan.
-           - Salin (*Copy*) string kode rahasia yang muncul.
-        
-        3. **Gunakan di Dashboard**
-           - Tempelkan (*Paste*) kode tersebut ke dalam kolom input di **Sidebar Kiri** aplikasi ini.
-           - Klik tombol **"Run Live Connection Test"** di atas untuk mengaktifkan sistem rekomendasi AI.
-        """)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 3: CUSTOM PROMPT (Documentation Mode)
-# ══════════════════════════════════════════════════════════════════════════════
-with tab3:
-    st.markdown("### 📝 System Prompt Documentation")
-    st.caption("Prompt ini adalah instruksi inti yang mengatur bagaimana Gemini mengevaluasi prediksi dari model XGBoost. Halaman ini murni sebagai dokumentasi arsitektur AI (Read-Only).")
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("")
+    # Status Cards Section
+    section_header("📈 Status Overview")
+    s1, s2, s3 = st.columns(3)
+    status_now = st.session_state.gemini_connection_status
     
-    col_header, col_tip = st.columns([1, 1])
-    with col_header:
+    with s1:
+        st.markdown(f"""
+<div class="kpi-wrap {'kpi-green' if status_now=='Connected & Verified' else 'kpi-red' if status_now=='Verification Failed' else 'kpi-orange'}">
+    <span class="kpi-icon">{'✅' if status_now=='Connected & Verified' else '❌' if status_now=='Verification Failed' else '⏳'}</span>
+    <div class="kpi-lbl">Connection Status</div>
+    <div class="kpi-val" style="font-size:.88rem;">{status_now.replace(' ', '<br>')}</div>
+    <div class="kpi-sub neu" style="font-size:.68rem;">Real-time verification</div>
+</div>""", unsafe_allow_html=True)
+    
+    with s2:
+        st.markdown(f"""
+<div class="kpi-wrap kpi-blue">
+    <span class="kpi-icon">🤖</span>
+    <div class="kpi-lbl">Active Model</div>
+    <div class="kpi-val" style="font-size:.88rem;">Gemini 2.5<br>Flash</div>
+    <div class="kpi-sub neu" style="font-size:.68rem;">Latest generation</div>
+</div>""", unsafe_allow_html=True)
+    
+    with s3:
+        st.markdown(f"""
+<div class="kpi-wrap kpi-teal">
+    <span class="kpi-icon">📡</span>
+    <div class="kpi-lbl">Provider</div>
+    <div class="kpi-val" style="font-size:.88rem;">Google AI</div>
+    <div class="kpi-sub neu" style="font-size:.68rem;">generativeai SDK</div>
+</div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # API Key Tutorial
+    with st.expander("Cara Mendapatkan Gemini API Key", expanded=False):
+        st.markdown(f"""
+<div style="padding:.5rem 0;">
+    <ol style="line-height:2; color:{C['muted']};">
+        <li><b>Buka Google AI Studio</b><br>
+            <span style="font-size:.75rem;">
+                <a href="https://makersuite.google.com/app/apikey" target="_blank" 
+                   style="color:{C['blue']};">https://makersuite.google.com/app/apikey</a>
+            </span>
+        </li>
+        <li><b>Login</b> dengan akun Google Anda</li>
+        <li><b>Klik "Create API Key"</b><br>
+            <span style="font-size:.75rem;">Pilih atau buat Google Cloud project baru</span>
+        </li>
+        <li><b>Copy</b> string API key yang muncul</li>
+        <li><b>Paste</b> ke kolom <b>Gemini API Key</b> di sidebar aplikasi</li>
+        <li><b>Test koneksi</b> menggunakan tombol di atas untuk verifikasi</li>
+    </ol>
+</div>
+""", unsafe_allow_html=True)
+
+# TAB CUSTOM PROMPT
+with tab_prompt:
+    section_header("📝 System Prompt Documentation")
+    st.caption("Instruksi inti yang mengatur bagaimana Gemini menginterpretasi prediksi XGBoost. Read-only.")
+
+    col_h, col_tip = st.columns([1, 1])
+    with col_h:
         st.markdown("#### 💾 Core Instruction Template")
     with col_tip:
-        st.markdown("""
-        <div style='text-align: right; margin-top: 5px; opacity: 0.8;'>
-            <small>💡 <b>Tip:</b> Arahkan kursor ke pojok kanan atas kotak kode untuk menyalin.</small>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    # Menampilkan prompt statis dari fungsi
+        st.markdown(f"""
+<div style='text-align:right; margin-top:6px; font-size:.75rem; color:{C["muted"]}'>
+    💡 Hover pojok kanan atas untuk menyalin
+</div>""", unsafe_allow_html=True)
+
     st.code(get_system_prompt(), language="text")
-    
-    st.markdown("")
-    
-    # Tombol Download tetap dipertahankan untuk evaluator
+
     st.download_button(
-        label="📥 Download Full Prompt Template (.txt)",
+        label="📥 Download Prompt Template (.txt)",
         data=get_system_prompt(),
-        file_name="gemini_system_prompt_documentation.txt",
+        file_name="gemini_system_prompt.txt",
         mime="text/plain",
-        use_container_width=True
+        use_container_width=True,
     )
 
     st.markdown("---")
-    
-    # Prompt Breakdown (Tidak diubah, tetap dipertahankan)
-    with st.expander("🔍 Membedah Struktur Prompt", expanded=False):
+    with st.expander("🔍 Struktur Prompt"):
         st.markdown("""
-        ### Prompt Components:
-        **1. Role Definition:** Defines AI as "Senior Retail Operations AI Advisor"
-        **2. Task Description:** Clarity on input (product data + XGBoost predictions)
+**Role Definition** — Konsultan retail food waste  
+**Context Injection** — Data produk + hasil prediksi XGBoost  
+**Output Format** — Ringkasan · Faktor Utama · Rekomendasi · Kesimpulan  
+**Rules** — Bahasa Indonesia · max 250 kata · no ML theory · actionable
+""")
         **3. Quality Criteria:** Actionable, Data-driven, Specific, Profitable
         **4. Output Format Specification:** Struktur laporan 7 poin yang komprehensif.
         """)
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 4: AI WORKFLOW
-# ══════════════════════════════════════════════════════════════════════════════
-with tab4:
-    st.markdown("### 🏗️ System Architecture & Data Flow")
-    st.caption("Alur kerja sistem terintegrasi dari input pengguna, prediksi XGBoost, hingga analisis oleh Gemini.")
+# TAB AI WORKFLOW
+with tab_wf:
+    section_header("🔄 System Architecture & Data Flow")
+    st.caption("Alur data dari input pengguna hingga rekomendasi AI.")
 
     st.markdown("#### 🔄 Data Flow Pipeline")
     
