@@ -15,9 +15,10 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 # page config
+_favicon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "FavIcon.png")
 st.set_page_config(
-    page_title="Food Waste Recommendation",
-    page_icon="♻️",
+    page_title="Waste Wise",
+    page_icon=_favicon_path if os.path.exists(_favicon_path) else "♻️",
     layout="wide",
     initial_sidebar_state="auto",  # expanded on desktop, collapsed on mobile
 )
@@ -402,7 +403,7 @@ if "user_role" not in st.session_state:
 
 #sidebar logo 
 with st.sidebar:
-    logo_path = os.path.join(BASE_DIR, "assets", "logo.png")
+    logo_path = os.path.join(BASE_DIR, "assets", "SidebarLogo.png")
     if os.path.exists(logo_path):
         st.markdown('<div style="padding:.5rem 0;">', unsafe_allow_html=True)
         st.image(logo_path, use_container_width=True)
@@ -532,9 +533,20 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # footer
-    st.markdown("""
+    import base64
+    _favicon_footer = os.path.join(BASE_DIR, "assets", "FavIcon.png")
+    if os.path.exists(_favicon_footer):
+        with open(_favicon_footer, "rb") as _f:
+            _favicon_b64 = base64.b64encode(_f.read()).decode()
+        _favicon_img = f'<img src="data:image/png;base64,{_favicon_b64}" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:6px;" />'
+    else:
+        _favicon_img = "🌱"
+
+    st.markdown(f"""
     <div class="sidebar-footer">
-        <div>🌱 <strong>Food Waste App</strong></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+            {_favicon_img}<strong>Waste Wise</strong>
+        </div>
         <div class="sidebar-footer-badge">v2.0.0</div>
         <div style="margin-top:.5rem; font-size:.65rem;">
             Streamlit · XGBoost · Gemini 
